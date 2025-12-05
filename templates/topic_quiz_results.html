@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz Results - {{ module.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h1 class="card-title mb-0">
+                        <i class="fas fa-poll me-2"></i>Quiz Results
+                    </h1>
+                    <p class="mb-0 mt-2">{{ module.title }}</p>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Quiz Completed!</strong> You have successfully completed the quiz for this module. 
+                        Below are your results for each question.
+                    </div>
+                    
+                    <div class="results-summary mb-4 p-3 bg-light rounded">
+                        <h4>Quiz Summary</h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Module:</strong> {{ module.title }}</p>
+                                <p><strong>Course:</strong> {{ module.course_title }}</p>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <p><strong>Score:</strong> {{ results.correct_answers }}/{{ results.total_questions }}</p>
+                                <p><strong>Percentage:</strong> {{ "%.1f"|format(results.score_percentage) }}%</p>
+                                {% if results.passed %}
+                                <p class="text-success"><strong>Status:</strong> Passed</p>
+                                {% else %}
+                                <p class="text-danger"><strong>Status:</strong> Failed</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="questions-results">
+                        {% for answer in results.answers %}
+                        <div class="question-result mb-4 border-bottom pb-3">
+                            <div class="question-text mb-3">
+                                <h5><strong>Question {{ loop.index }}:</strong> {{ answer.question_text }}</h5>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="answer-section p-2 bg-warning rounded mb-2">
+                                        <h6 class="text-dark">
+                                            <i class="fas fa-user me-1"></i>Your Answer
+                                        </h6>
+                                        <p class="mb-1">
+                                            <strong>{{ answer.selected_option }}.</strong> 
+                                            {% if answer.selected_option == 'A' %}
+                                                {{ answer.option_a }}
+                                            {% elif answer.selected_option == 'B' %}
+                                                {{ answer.option_b }}
+                                            {% elif answer.selected_option == 'C' %}
+                                                {{ answer.option_c }}
+                                            {% elif answer.selected_option == 'D' %}
+                                                {{ answer.option_d }}
+                                            {% endif %}
+                                        </p>
+                                        {% if answer.is_correct %}
+                                        <span class="badge bg-success">Correct</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Incorrect</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="answer-section p-2 bg-light rounded">
+                                        <h6 class="text-success">
+                                            <i class="fas fa-check-circle me-1"></i>Correct Answer
+                                        </h6>
+                                        <p class="mb-1">
+                                            <strong>{{ answer.correct_option }}.</strong> 
+                                            {% if answer.correct_option == 'A' %}
+                                                {{ answer.option_a }}
+                                            {% elif answer.correct_option == 'B' %}
+                                                {{ answer.option_b }}
+                                            {% elif answer.correct_option == 'C' %}
+                                                {{ answer.option_c }}
+                                            {% elif answer.correct_option == 'D' %}
+                                                {{ answer.option_d }}
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{{ url_for('course_detail', course_id=module.course_id) }}" class="btn btn-primary">
+                            <i class="fas fa-arrow-left me-1"></i>Back to Course
+                        </a>
+                        <!-- Check if this is the last module in the course -->
+                        {% if is_last_module %}
+                        <a href="{{ url_for('course_detail', course_id=module.course_id) }}" class="btn btn-success">
+                            Continue to Course <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('module_video', course_id=module.course_id, module_id=next_module_id) }}" class="btn btn-success">
+                            Continue to Next Module <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,222 @@
+/* Light Theme CSS for EduFlow LMS */
+/* This file overrides the dark theme with light theme styles */
+
+/* Reset dark theme variables */
+:root {
+  --bs-body-bg: #ffffff;
+  --bs-body-color: #212529;
+  --bs-heading-color: #212529;
+  --bs-border-color: #dee2e6;
+  --bs-light: #f8f9fa;
+  --bs-dark: #212529;
+  --bs-primary: #0d6efd;
+  --bs-secondary: #6c757d;
+  --bs-success: #198754;
+  --bs-info: #0dcaf0;
+  --bs-warning: #ffc107;
+  --bs-danger: #dc3545;
+}
+
+/* Update HTML theme attribute */
+html[data-bs-theme="dark"] {
+  --bs-body-bg: #ffffff;
+  --bs-body-color: #212529;
+  --bs-heading-color: #212529;
+  --bs-border-color: #dee2e6;
+}
+
+/* Navigation bar adjustments */
+.navbar.bg-dark {
+  background-color: #f8f9fa !important;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.navbar-dark .navbar-brand,
+.navbar-dark .navbar-nav .nav-link {
+  color: #212529 !important;
+}
+
+.navbar-dark .navbar-toggler-icon {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23212529' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+/* Footer adjustments */
+footer.bg-dark {
+  background-color: #f8f9fa !important;
+  border-top: 1px solid #dee2e6;
+}
+
+footer .text-light,
+footer .text-muted,
+footer a.text-muted {
+  color: #212529 !important;
+}
+
+/* Card adjustments */
+.card {
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+}
+
+.card.bg-dark {
+  background-color: #f8f9fa !important;
+}
+
+/* Form controls */
+.form-control {
+  background-color: #ffffff;
+  color: #212529;
+  border: 1px solid #ced4da;
+}
+
+.form-control:focus {
+  background-color: #ffffff;
+  color: #212529;
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.form-select {
+  background-color: #ffffff;
+  color: #212529;
+}
+
+/* Buttons */
+.btn-dark {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  color: #ffffff;
+}
+
+.btn-outline-dark {
+  color: #212529;
+  border-color: #212529;
+}
+
+.btn-outline-dark:hover {
+  background-color: #212529;
+  color: #ffffff;
+}
+
+/* Alerts */
+.alert-dark {
+  background-color: #d3d3d4;
+  border-color: #bcbebf;
+  color: #212529;
+}
+
+/* Tables */
+.table-dark {
+  --bs-table-bg: #f8f9fa;
+  --bs-table-striped-bg: #ecedee;
+  --bs-table-striped-color: #000;
+  --bs-table-active-bg: #dfe0e1;
+  --bs-table-active-color: #000;
+  --bs-table-hover-bg: #e5e6e7;
+  --bs-table-hover-color: #000;
+  color: #000;
+  border-color: #d1d2d3;
+}
+
+/* Dropdowns */
+.dropdown-menu {
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+}
+
+.dropdown-item {
+  color: #212529;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background-color: #e9ecef;
+  color: #1e2125;
+}
+
+/* Modals */
+.modal-content {
+  background-color: #ffffff;
+}
+
+.modal-header {
+  border-bottom: 1px solid #dee2e6;
+}
+
+.modal-footer {
+  border-top: 1px solid #dee2e6;
+}
+
+/* Progress bars */
+.progress {
+  background-color: #e9ecef;
+}
+
+/* List groups */
+.list-group-item {
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.list-group-item-action:hover,
+.list-group-item-action:focus {
+  background-color: #f8f9fa;
+}
+
+/* Badges */
+.badge.bg-dark {
+  background-color: #6c757d !important;
+}
+
+/* Chatbot adjustments */
+.chatbot-popup {
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+}
+
+.chatbot-header {
+  background-color: #0d6efd;
+  color: #ffffff;
+}
+
+.chatbot-message.bot-message {
+  background-color: #f8f9fa;
+  color: #212529;
+}
+
+.chatbot-message.user-message {
+  background-color: #0d6efd;
+  color: #ffffff;
+}
+
+.chatbot-input {
+  border-top: 1px solid #dee2e6;
+  background-color: #ffffff;
+}
+
+/* Exam options */
+.exam-option-label:hover {
+  background-color: rgba(13, 110, 253, 0.1);
+  border-color: #0d6efd !important;
+}
+
+.exam-option-label input:checked + .option-text {
+  color: #0d6efd;
+}
+
+/* Timer container */
+.timer-container {
+  background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+  color: white;
+}
+
+/* Result icons */
+.result-icon.result-pass i {
+  color: #198754;
+  text-shadow: 0 0 10px rgba(25, 135, 84, 0.3);
+}
+
+.result-icon.result-fail i {
+  color: #dc3545;
+  text-shadow: 0 0 10px rgba(220, 53, 69, 0.3);
+}

@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Login - EduFlow LMS{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <h2 class="fw-bold">Welcome Back</h2>
+                        <p class="text-muted">Sign in to continue your learning journey</p>
+                    </div>
+                    
+                    <!-- Google Sign In Button -->
+                    <div class="mb-4">
+                        <button type="button" class="google-btn mb-3" id="googleSignInBtn">
+                            <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" width="18" height="18">
+                            Continue with Google
+                        </button>
+                        <div class="oauth-divider">
+                            <span>or</span>
+                        </div>
+                    </div>
+                    
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="remember">
+                            <label class="form-check-label" for="remember">
+                                Remember me
+                            </label>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100 py-2">
+                            <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                        </button>
+                    </form>
+                    
+                    <div class="text-center mt-4">
+                        <a href="{{ url_for('forgot_password') }}" class="text-decoration-none text-muted">Forgot your password?</a>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="text-center">
+                        <p class="text-muted">
+                            Don't have an account? 
+                            <a href="{{ url_for('signup') }}" class="text-decoration-none">Sign up here</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+{% endblock %}
+
+{% block scripts %}
+<!-- Google OAuth Script -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+// Google OAuth Configuration
+function handleCredentialResponse(response) {
+    console.log('Google OAuth response received:', response);
+    
+    // Send the ID token to your server
+    fetch('/google-login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            credential: response.credential
+        })
+    })
+    .then(response => {
+        console.log('Server response status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Server response data:', data);
+        if (data.success) {
+            console.log('Login successful, redirecting to dashboard...');
+            window.location.href = '/dashboard';
+        } else {
+            console.error('Login failed:', data.message);
+            alert('Login failed: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Network or parsing error:', error);
+        alert('An error occurred during login. Please check the console for details.');
+    });
+}
+
+// Initialize Google Sign-In
+window.onload = function () {
+    google.accounts.id.initialize({
+        client_id: '246800125218-l9rd09o1altsvlrknu1b4a67fdl9kkc9.apps.googleusercontent.com', // Replace with your actual Google Client ID
+        callback: handleCredentialResponse
+    });
+    
+    google.accounts.id.renderButton(
+        document.getElementById('googleSignInBtn'), {
+            theme: 'outline',
+            size: 'large',
+            width: '100%',
+            text: 'continue_with'
+        }
+    );
+};
+</script>
+{% endblock %}

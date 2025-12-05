@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Verify OTP - EduFlow LMS{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <h2 class="fw-bold">Verify Code</h2>
+                        <p class="text-muted">
+                            We've sent a verification code to 
+                            <strong>{{ verification_target }}</strong>
+                        </p>
+                        <p class="text-muted small">Enter the 6-digit code below</p>
+                    </div>
+                    
+                    <form method="POST" id="otpForm">
+                        <input type="hidden" name="user_id" value="{{ user_id }}">
+                        <input type="hidden" name="verification_method" value="{{ verification_method }}">
+                        
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-center gap-2">
+                                <input type="text" class="form-control text-center otp-input" name="otp_1" maxlength="1" pattern="[0-9]" required>
+                                <input type="text" class="form-control text-center otp-input" name="otp_2" maxlength="1" pattern="[0-9]" required>
+                                <input type="text" class="form-control text-center otp-input" name="otp_3" maxlength="1" pattern="[0-9]" required>
+                                <input type="text" class="form-control text-center otp-input" name="otp_4" maxlength="1" pattern="[0-9]" required>
+                                <input type="text" class="form-control text-center otp-input" name="otp_5" maxlength="1" pattern="[0-9]" required>
+                                <input type="text" class="form-control text-center otp-input" name="otp_6" maxlength="1" pattern="[0-9]" required>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100 py-2">
+                            <i class="fas fa-check me-2"></i>Verify Code
+                        </button>
+                    </form>
+                    
+                    <div class="text-center mt-4">
+                        <p class="text-muted small">
+                            Didn't receive the code? 
+                            <a href="#" id="resendOtp" class="text-decoration-none">Resend</a>
+                        </p>
+                        <p class="text-muted small">
+                            <span id="countdown">Code expires in <span id="timer">10:00</span></span>
+                        </p>
+                    </div>
+                    
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('forgot_password') }}" class="text-decoration-none text-muted">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Forgot Password
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const otpInputs = document.querySelectorAll('.otp-input');
+    const resendBtn = document.getElementById('resendOtp');
+    const countdown = document.getElementById('countdown');
+    const timer = document.getElementById('timer');
+    
+    // Auto-focus next input
+    otpInputs.forEach((input, index) => {
+        input.addEventListener('input', function() {
+            if (this.value.length === 1 && index < otpInputs.length - 1) {
+                otpInputs[index + 1].focus();
+            }
+        });
+        
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace' && this.value.length === 0 && index > 0) {
+                otpInputs[index - 1].focus();
+            }
+        });
+    });
+    
+    // Countdown timer (10 minutes)
+    let timeLeft = 600; // 10 minutes in seconds
+    const countdownInterval = setInterval(() => {
+        timeLeft--;
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        timer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        if (timeLeft <= 0) {
+            clearInterval(countdownInterval);
+            countdown.textContent = 'Code has expired. Please request a new one.';
+            resendBtn.style.display = 'inline';
+        }
+    }, 1000);
+    
+    // Resend OTP functionality
+    resendBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        // This would typically make an AJAX call to resend OTP
+        alert('Resend functionality would be implemented here');
+    });
+});
+</script>
+{% endblock %} 

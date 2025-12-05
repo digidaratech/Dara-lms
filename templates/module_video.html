@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}{{ module.title }} - {{ course.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5 module-video-container"
+     data-course-id="{{ course.id }}"
+     data-module-id="{{ module.id }}"
+    data-course-progress="{{ course.progress if 'progress' in course else 0 }}"
+     data-watched-duration="{{ progress.watched_duration if progress else 0 }}"
+     data-module-duration="{{ module.duration if module.duration else '' }}">
+
+    <div class="row">
+
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-body">
+
+                    <nav aria-label="breadcrumb" class="mb-4">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ url_for('courses') }}">Courses</a></li>
+                            <li class="breadcrumb-item"><a href="{{ url_for('course_detail', course_id=course.id) }}">{{ course.title }}</a></li>
+                            <li class="breadcrumb-item active">{{ module.title }}</li>
+                        </ol>
+                    </nav>
+
+                    <!-- Video Player -->
+                    <div class="video-container mb-4">
+                        {% if module.video_url %}
+                        <div class="ratio ratio-16x9">
+                            {% if 'youtube.com' in module.video_url or 'youtu.be' in module.video_url %}
+                                <!-- YouTube Video -->
+                                {% set video_id = module.video_url.split('v=')[1] if 'v=' in module.video_url else module.video_url.split('/')[-1] %}
+                                <iframe 
+                                    src="https://www.youtube.com/embed/{{ video_id }}" 
+                                    title="{{ module.title }}"
+                                    frameborder="0" 
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                    allowfullscreen>
+                                </iframe>
+                            {% elif 'vimeo.com' in module.video_url %}
+                                <!-- Vimeo Video -->
+                                {% set video_id = module.video_url.split('/')[-1] %}
+                                <iframe 
+                                    src="https://player.vimeo.com/video/{{ video_id }}" 
+                                    title="{{ module.title }}"
+                                    frameborder="0" 
+                                    allow="autoplay; fullscreen; picture-in-picture" 
+                                    allowfullscreen>
+                                </iframe>
+                            {% elif module.video_url.startswith('uploads/') %}
+                                <!-- Local Video File -->
+                                <video controls style="width: 100%; height: 100%;">
+                                    <source src="{{ url_for('static', filename=module.video_url) }}" type="video/mp4">
+                                    Your browser does not support the video tag.
+                                </video>
+                            {% else %}
+                                <!-- Direct Video URL -->
+                                <video controls style="width: 100%; height: 100%;">
+                                    <source src="{{ module.video_url }}" type="video/mp4">
+                                    Your browser does not support the video tag.
+                                </video>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <div class="video-placeholder text-center py-5">
+                            <i class="fas fa-video fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">Video content coming soon</h4>
+                            <p class="text-muted">This module's video will be available shortly.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Module Info -->
+                    <div class="module-info">
+                        <h1 class="h2 mb-3">{{ module.title }}</h1>
+                        <p class="text-muted mb-3">{{ module.description }}</p>
+                        
+                        {% if module.duration %}
+                        <div class="d-flex align-items-center text-muted mb-3">
+                            <i class="fas fa-clock me-2"></i>
+                            <span>{{ module.duration }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Course Modules Sidebar -->
+        <div class="col-lg-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Course Modules
+                    </h5>
+                </div>
+
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for mod in all_modules %}
+                        <a href="{{ url_for('module_video', course_id=course.id, module_id=mod.id) }}"
+                           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center {% if mod.id == module.id %}active{% endif %} {% if mod.is_completed %}completed{% endif %}"
+                           data-module-id="{{ mod.id }}">
+                            <div>
+                                {% if mod.is_completed %}
+                                <i class="fas fa-check-circle me-2 text-success"></i>
+                                {% else %}
+                                <i class="fas fa-play-circle me-2"></i>
+                                {% endif %}
+                                <span class="{% if mod.id == module.id %}text-white{% endif %}">{{ mod.title }}</span>
+                            </div>
+
+                            {% if mod.id == module.id %}
+                                <span class="badge bg-light text-dark">Playing</span>
+                            {% elif mod.is_completed %}
+                                <span class="badge bg-success">Done</span>
+                            {% else %}
+                                <span class="badge bg-primary">Module {{ loop.index }}</span>
+                            {% endif %}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            {% if session.user_id %}
+            <div class="card shadow mt-3">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="fas fa-chart-line me-2"></i>Your Progress
+                    <span id="progress-status" class="badge bg-info ms-2" style="display: none;">Updating...</span>
+                    </h6>
+                    <div class="progress mb-2">
+                        <div class="progress-bar" role="progressbar" id="course-progress-bar" style="transition: none;">{{ course.progress if 'progress' in course else 0 }}%</div>
+                    </div>
+                    <small class="text-muted">Course Progress</small>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% include 'course_chatbot.html' %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/duration-helper.js') }}"></script>
+<script src="{{ url_for('static', filename='js/video-tracking.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/course_chatbot.css') }}">
+<script src="{{ url_for('static', filename='js/course_chatbot.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set initial progress bar width
+    var progressBar = document.getElementById('course-progress-bar');
+    if (progressBar) {
+        // Get progress value from data attribute
+        var container = document.querySelector('.module-video-container');
+        var progress = container ? parseFloat(container.dataset.courseProgress) || 0 : 0;
+        progressBar.style.width = progress + '%';
+        progressBar.setAttribute('aria-valuenow', progress);
+        // Remove all animations for instant smooth updates
+        progressBar.style.transition = 'none';
+    }
+    // Initialize real-time tracking
+    if (typeof initializeRealTimeTracking === 'function') {
+        initializeRealTimeTracking();
+    }
+});
+</script>
+{% endblock %}

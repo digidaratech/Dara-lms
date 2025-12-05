@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Exam Result{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h1 class="card-title mb-0">Exam Result</h1>
+                </div>
+                <div class="card-body">
+                    {% if attempt %}
+                        <div class="text-center mb-4">
+                            <div class="result-icon {{ passed and attempt.status != 'failed_due_to_tab_switch' and attempt.status != 'failed_due_to_tab_switch_ineligible' else 'result-fail' }}">
+                                <i class="fas {{ passed and attempt.status != 'failed_due_to_tab_switch' and attempt.status != 'failed_due_to_tab_switch_ineligible' else 'fa-times-circle' }}"></i>
+                            </div>
+                            <h2 class="{{ passed and attempt.status != 'failed_due_to_tab_switch' and attempt.status != 'failed_due_to_tab_switch_ineligible' else 'text-danger' }}">
+                                {% if attempt.status == 'failed_due_to_tab_switch' %}
+                                    Exam Failed Due to Tab Switching
+                                {% elif attempt.status == 'failed_due_to_tab_switch_ineligible' %}
+                                    Exam Not Accessible
+                                {% elif passed %}
+                                    Congratulations! You Passed!
+                                {% else %}
+                                    Exam Not Passed
+                                {% endif %}
+                            </h2>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <strong>Course:</strong>
+                                    <span>{{ attempt.course_title }}</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <strong>Attempt Number:</strong>
+                                    <span>{{ attempt.attempt_number }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <strong>Your Score:</strong>
+                                    <span class="fs-4 fw-bold">{{ attempt.score if attempt.score is not none else 'N/A' }}%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <strong>Status:</strong>
+                                    <span class="badge 
+                                        {% if attempt.status == 'failed_due_to_tab_switch' or attempt.status == 'failed_due_to_tab_switch_ineligible' %}bg-warning
+                                        {% elif passed %}bg-success
+                                        {% else %}bg-danger
+                                        {% endif %}">
+                                        {{ attempt.status.replace('_', ' ').title() }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <strong>Time Taken:</strong>
+                                    <span>{{ attempt.time_taken if attempt.time_taken is not none else 'N/A' }} seconds</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <strong>Date:</strong>
+                                    <span>{{ attempt.exam_date.strftime('%Y-%m-%d %H:%M:%S') if attempt.exam_date else 'N/A' }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if attempt.status == 'failed_due_to_tab_switch' or attempt.status == 'failed_due_to_tab_switch_ineligible' %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Tab Switching Detected!</strong> 
+                                {% if attempt.status == 'failed_due_to_tab_switch_ineligible' %}
+                                    You are not eligible to take this exam. Please complete the course first.
+                                {% else %}
+                                    Your exam was automatically failed due to switching tabs during the exam.
+                                    <br><strong>Tab switching is restricted during the exam.</strong>
+                                {% endif %}
+                            </div>
+                        {% elif not passed %}
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                <strong>Exam Not Passed!</strong> You need to score at least 60% to pass.
+                            </div>
+                        {% else %}
+                            <div class="alert alert-success">
+                                <i class="fas fa-certificate me-2"></i>
+                                <strong>Congratulations!</strong> You have successfully passed the exam.
+                            </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-between mt-4">
+                            {% if can_retry %}
+                                <a href="{{ url_for('certification_exam', course_id=course_id) }}" class="btn btn-primary">
+                                    <i class="fas fa-redo me-2"></i>Retry Exam
+                                </a>
+                            {% endif %}
+                            <a href="{{ url_for('course_detail', course_id=course_id) }}" class="btn btn-outline-primary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Course
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-danger">
+                            <h4><i class="fas fa-exclamation-triangle me-2"></i>Error</h4>
+                            <p>Exam attempt not found.</p>
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.result-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+}
+
+.result-pass {
+    color: #28a745;
+}
+
+.result-fail {
+    color: #dc3545;
+}
+
+.info-item {
+    margin-bottom: 15px;
+}
+
+.info-item strong {
+    display: block;
+    color: #6c757d;
+}
+
+.info-item span {
+    font-size: 1.1rem;
+}
+</style>
+{% endblock %}

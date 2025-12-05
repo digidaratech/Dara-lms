@@ -1,0 +1,95 @@
+Create a full-stack web application for a Learning Management System (LMS) using Python Flask (backend), HTML/CSS (frontend), JavaScript (for interactivity), and MySQL (database). The project should include the following pages and logic:
+
+
+
+1. **Landing Page (Home Page)**:
+   - Static page rendered using a Flask route.
+   - Welcome section with LMS introduction.
+   - Features like "Expert Instructors", "Flexible Learning", "Certificate on Completion".
+   - Buttons: "Login", "Sign Up", and "View Courses" linking to respective Flask routes.
+
+
+
+2. **Sign Up Page (`/signup`)**:
+   - HTML form with fields: Name, Email, Mobile, Password, Confirm Password.
+   - Data saved in MySQL user table after validation.
+   - On successful registration, redirect to the payment page (`/payment`) to choose a course.
+
+
+
+3. **Login Page (`/login`)**:
+   - Login with email/username and password.
+   - Authenticate against the MySQL user table.
+   - After login, check the course access permission:
+     - If purchased, redirect to `/dashboard/<course_id>`.
+     - If not purchased or accessing unauthorized course, show "Access Denied".
+
+
+
+4. **Payment Page (`/payment`)**:
+   - Display a list of available courses from MySQL `courses` table with price.
+   - Allow user to register and pay for a course.
+   - After payment (simulate or integrate payment gateway), store access in `user_course` mapping table.
+   - Generate and display a unique Login ID and Password tied to the selected course.
+
+
+
+5. **Course Details Page (`/course/<course_id>`)**:
+   - Retrieve course details dynamically from MySQL.
+   - Display: title, description, instructor, modules, duration, and cost.
+   - Include a "Register & Pay" button that redirects to `/payment`.
+
+
+
+6. **Course Dashboard Page (`/dashboard/<course_id>`)**:
+   - Only accessible if user has access to that course.
+   - Display course content from MySQL or static folders:
+     - Embedded video lessons (YouTube or uploaded).
+     - Downloadable materials.
+   - Top header with:
+     - "Welcome, [User]"
+     - Logout button (session-based).
+   - Bottom-right floating:
+     - **Chatbot icon** (popup JS modal or AI API integration).
+     - **WhatsApp icon** (link to configured number).
+
+
+
+7. **Chatbot Functionality**:
+   - Floating chatbot visible on every page via base template.
+   - Pop-up using JavaScript + basic Q&A logic (or use a chatbot API).
+   - Use JS to toggle visibility.
+   - Styled to match the LMS theme.
+
+
+
+8. **Responsive Design**:
+   - Use Bootstrap or custom media queries.
+   - Ensure all pages are mobile and tablet friendly.
+   - Consistent button styling and font use (Sans-serif).
+
+
+
+9. **Global Components**:
+   - **Navigation Bar** (visible on all pages): Home, Courses, Login, Signup, Logout (based on session).
+   - **Footer**: Contact info, dummy social links, dummy logo.
+
+
+
+**Backend Stack**:
+- Python 3.x with Flask
+- Flask Blueprints for route organization
+- MySQL for storing user, course, and enrollment data
+- Flask-SQLAlchemy or `mysql-connector-python`
+
+**Frontend Stack**:
+- HTML5 with Jinja templating
+- CSS3 (or Bootstrap)
+- JavaScript for chatbot, form validation, and interactivity
+
+**Output Requirements**:
+- Flask app folder structure
+- Templates folder with all HTML pages
+- Static folder with CSS, JS, image files
+- Working routes and session management
+- MySQL schema and sample data inserts

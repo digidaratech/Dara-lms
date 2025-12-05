@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Upload Form</title>
+    <link rel="stylesheet" href="../static/css/video.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="upload-card">
+            <div class="header">
+                <h1><i class="fas fa-video"></i> Video Upload</h1>
+                <p>Share your video with the world</p>
+            </div>
+
+            <form class="upload-form" id="videoUploadForm">
+                <div class="form-group">
+                    <label for="videoTitle">
+                        <i class="fas fa-heading"></i> Video Title
+                    </label>
+                    <input 
+                        type="text" 
+                        id="videoTitle" 
+                        name="videoTitle" 
+                        placeholder="Enter your video title"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="videoDescription">
+                        <i class="fas fa-align-left"></i> Description
+                    </label>
+                    <textarea 
+                        id="videoDescription" 
+                        name="videoDescription" 
+                        placeholder="Describe your video content..."
+                        rows="4"
+                    ></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="videoCategory">
+                        <i class="fas fa-tags"></i> Category
+                    </label>
+                    <select id="videoCategory" name="videoCategory" required>
+                        <option value="">Select a category</option>
+                        <option value="entertainment">Entertainment</option>
+                        <option value="education">Education</option>
+                        <option value="music">Music</option>
+                        <option value="gaming">Gaming</option>
+                        <option value="technology">Technology</option>
+                        <option value="lifestyle">Lifestyle</option>
+                        <option value="sports">Sports</option>
+                        <option value="news">News</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="videoTags">
+                        <i class="fas fa-hashtag"></i> Tags
+                    </label>
+                    <input 
+                        type="text" 
+                        id="videoTags" 
+                        name="videoTags" 
+                        placeholder="Enter tags separated by commas"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="videoThumbnail">
+                        <i class="fas fa-image"></i> Thumbnail
+                    </label>
+                    <div class="file-upload-wrapper">
+                        <input 
+                            type="file" 
+                            id="videoThumbnail" 
+                            name="videoThumbnail" 
+                            accept="image/*"
+                            class="file-input"
+                        >
+                        <div class="file-upload-area" id="thumbnailUploadArea">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Click to upload thumbnail or drag and drop</p>
+                            <span>Supports: JPG, PNG, GIF (Max 5MB)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="videoFile">
+                        <i class="fas fa-film"></i> Video File
+                    </label>
+                    <div class="file-upload-wrapper">
+                        <input 
+                            type="file" 
+                            id="videoFile" 
+                            name="videoFile" 
+                            accept="video/*"
+                            class="file-input"
+                            required
+                        >
+                        <div class="file-upload-area" id="videoUploadArea">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Click to upload video or drag and drop</p>
+                            <span>Supports: MP4, AVI, MOV, WMV (Max 500MB)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="videoPrivacy">
+                        <i class="fas fa-eye"></i> Privacy Settings
+                    </label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="videoPrivacy" value="public" checked>
+                            <span class="radio-custom"></span>
+                            <i class="fas fa-globe"></i>
+                            Public
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="videoPrivacy" value="unlisted">
+                            <span class="radio-custom"></span>
+                            <i class="fas fa-link"></i>
+                            Unlisted
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="videoPrivacy" value="private">
+                            <span class="radio-custom"></span>
+                            <i class="fas fa-lock"></i>
+                            Private
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="ageRestriction" name="ageRestriction">
+                        <span class="checkbox-custom"></span>
+                        <i class="fas fa-exclamation-triangle"></i>
+                        This video contains age-restricted content
+                    </label>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="monetization" name="monetization">
+                        <span class="checkbox-custom"></span>
+                        <i class="fas fa-dollar-sign"></i>
+                        Enable monetization for this video
+                    </label>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="saveDraft">
+                        <i class="fas fa-save"></i> Save Draft
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="uploadVideo">
+                        <i class="fas fa-upload"></i> Upload Video
+                    </button>
+                </div>
+            </form>
+
+            <div class="upload-progress" id="uploadProgress" style="display: none;">
+                <div class="progress-header">
+                    <h3>Uploading Video...</h3>
+                    <span class="progress-percentage" id="progressPercentage">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <p class="progress-status" id="progressStatus">Preparing upload...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // File upload preview functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const thumbnailInput = document.getElementById('videoThumbnail');
+            const videoInput = document.getElementById('videoFile');
+            const thumbnailArea = document.getElementById('thumbnailUploadArea');
+            const videoArea = document.getElementById('videoUploadArea');
+
+            // Thumbnail upload preview
+            thumbnailInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        thumbnailArea.innerHTML = `
+                            <img src="${e.target.result}" alt="Thumbnail preview" style="max-width: 100%; max-height: 150px; object-fit: cover;">
+                            <p>${file.name}</p>
+                        `;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // Video upload preview
+            videoInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    videoArea.innerHTML = `
+                        <i class="fas fa-video"></i>
+                        <p>${file.name}</p>
+                        <span>${(file.size / (1024 * 1024)).toFixed(2)} MB</span>
+                    `;
+                }
+            });
+
+            // Drag and drop functionality
+            [thumbnailArea, videoArea].forEach(area => {
+                area.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    area.classList.add('drag-over');
+                });
+
+                area.addEventListener('dragleave', function(e) {
+                    e.preventDefault();
+                    area.classList.remove('drag-over');
+                });
+
+                area.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    area.classList.remove('drag-over');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        const input = area.previousElementSibling;
+                        input.files = files;
+                        input.dispatchEvent(new Event('change'));
+                    }
+                });
+            });
+
+            // Form submission
+            document.getElementById('videoUploadForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Show progress bar
+                document.getElementById('uploadProgress').style.display = 'block';
+                
+                // Simulate upload progress
+                let progress = 0;
+                const progressFill = document.getElementById('progressFill');
+                const progressPercentage = document.getElementById('progressPercentage');
+                const progressStatus = document.getElementById('progressStatus');
+                
+                const interval = setInterval(() => {
+                    progress += Math.random() * 15;
+                    if (progress >= 100) {
+                        progress = 100;
+                        clearInterval(interval);
+                        progressStatus.textContent = 'Upload completed!';
+                        setTimeout(() => {
+                            alert('Video uploaded successfully!');
+                            document.getElementById('uploadProgress').style.display = 'none';
+                        }, 1000);
+                    }
+                    
+                    progressFill.style.width = progress + '%';
+                    progressPercentage.textContent = Math.round(progress) + '%';
+                    
+                    if (progress < 30) {
+                        progressStatus.textContent = 'Uploading video file...';
+                    } else if (progress < 70) {
+                        progressStatus.textContent = 'Processing video...';
+                    } else if (progress < 100) {
+                        progressStatus.textContent = 'Finalizing upload...';
+                    }
+                }, 200);
+            });
+
+            // Save draft functionality
+            document.getElementById('saveDraft').addEventListener('click', function() {
+                alert('Draft saved successfully!');
+            });
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Certification Exam - {{ course.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h1 class="card-title mb-0">
+                        <i class="fas fa-graduation-cap me-2"></i>Certification Exam
+                    </h1>
+                    <p class="mb-0 mt-2">{{ course.title }}</p>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info alert-permanent">
+                        <h4 class="alert-heading">Exam Rules & Regulations</h4>
+                        <ul class="mb-0">
+                            <li>This exam consists of {{ exam_questions|length }} multiple-choice questions</li>
+                            <li>You have 30 minutes to complete the exam</li>
+                            <li>You must score at least 60% ({{ (exam_questions|length * 0.6)|round|int }} correct answers) to pass</li>
+                            <li>Each question is worth 10 points</li>
+                            <li>You have a maximum of 3 attempts to pass the exam</li>
+                            <li><strong>Tab switching or leaving fullscreen mode will result in automatic exam termination</strong></li>
+                            <li>All answers must be submitted before time expires</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="exam-info mb-4">
+                        <h4>Exam Information</h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <strong>Total Questions</strong>
+                                    <span>{{ exam_questions|length }}</span>
+                                </div>
+                                <div class="info-item">
+                                    <strong>Time Limit</strong>
+                                    <span>30 minutes</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <strong>Passing Score</strong>
+                                    <span>60% ({{ (exam_questions|length * 0.6)|round|int }} questions)</span>
+                                </div>
+                                <div class="info-item">
+                                    <strong>Points per Question</strong>
+                                    <span>10 points</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <p class="mb-4">Click the button below to start your certification exam.</p>
+                        <a href="{{ url_for('certification_exam', course_id=course_id) }}" class="btn btn-success btn-lg">
+                            <i class="fas fa-play-circle me-2"></i>Start Exam
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.info-item {
+    margin-bottom: 15px;
+}
+
+.info-item strong {
+    display: block;
+    color: #6c757d;
+}
+
+.info-item span {
+    font-size: 1.1rem;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Module Quiz - {{ module.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h1 class="card-title mb-0">
+                        <i class="fas fa-question-circle me-2"></i>Module Quiz
+                    </h1>
+                    <p class="mb-0 mt-2">{{ module.title }}</p>
+                </div>
+                <div class="card-body text-center">
+                    <p>You will be presented with {{ questions|length }} questions, one at a time.</p>
+                    <p>Answer each question and proceed to the next one.</p>
+                    <a href="{{ url_for('module_quiz_question', module_id=module.id, question_index=1) }}" class="btn btn-success btn-lg">
+                        <i class="fas fa-play-circle me-2"></i>Start Quiz
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// No specific scripts needed for this page
+</script>
+{% endblock %}

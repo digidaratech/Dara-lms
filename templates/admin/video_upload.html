@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Upload - Admin Panel</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    
+    <style>
+        .upload-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .file-upload-area {
+            border: 2px dashed #6c757d;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        .file-upload-area:hover {
+            border-color: #0d6efd;
+            background: rgba(13, 110, 253, 0.05);
+        }
+        
+        .file-upload-area.drag-over {
+            border-color: #0d6efd;
+            background: rgba(13, 110, 253, 0.1);
+        }
+        
+        .playlist-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .thumbnail-preview {
+            max-width: 200px;
+            max-height: 150px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0d6efd, #0dcaf0);
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{{ url_for('admin_dashboard') }}">
+                <i class="fas fa-graduation-cap me-2"></i>DIGIDARA ACADEMY - Admin
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_courses') }}">
+                            <i class="fas fa-book me-1"></i>Courses
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">
+                            <i class="fas fa-video me-1"></i>Video Upload
+                        </a>
+                    </li>
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user me-1"></i>Admin
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('admin_logout') }}">
+                                <i class="fas fa-sign-out-alt me-1"></i>Logout
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container mt-3">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1><i class="fas fa-video me-2"></i>Video Upload</h1>
+                    <a href="{{ url_for('admin_courses') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Courses
+                    </a>
+                </div>
+
+                <form id="videoUploadForm" method="POST" enctype="multipart/form-data">
+                    <!-- Basic Video Information -->
+                    <div class="upload-section">
+                        <h4><i class="fas fa-info-circle me-2"></i>Basic Information</h4>
+                        
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label for="course_id" class="form-label">Select Course *</label>
+                                    <select class="form-select" id="course_id" name="course_id" required>
+                                        <option value="">Choose a course...</option>
+                                        {% for course in courses %}
+                                        <option value="{{ course.id }}">{{ course.title }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="title" class="form-label">Video Title *</label>
+                                    <input type="text" class="form-control" id="title" name="title" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">Description</label>
+                                    <textarea class="form-control" id="description" name="description" rows="4"></textarea>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="duration" class="form-label">Duration (e.g., 15:30)</label>
+                                            <input type="text" class="form-control" id="duration" name="duration" placeholder="MM:SS">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="order_index" class="form-label">Module Order</label>
+                                            <input type="number" class="form-control" id="order_index" name="order_index" value="1" min="1">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="videoCategory" class="form-label">Category</label>
+                                            <select class="form-select" id="videoCategory" name="videoCategory">
+                                                <option value="programming">Programming</option>
+                                                <option value="design">Design</option>
+                                                <option value="business">Business</option>
+                                                <option value="marketing">Marketing</option>
+                                                <option value="technology">Technology</option>
+                                                <option value="lifestyle">Lifestyle</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="videoLevel" class="form-label">Level</label>
+                                            <select class="form-select" id="videoLevel" name="videoLevel">
+                                                <option value="beginner">Beginner</option>
+                                                <option value="intermediate">Intermediate</option>
+                                                <option value="advanced">Advanced</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="videoThumbnail" class="form-label">Thumbnail Image</label>
+                                    <div class="file-upload-area" id="thumbnailUploadArea">
+                                        <i class="fas fa-cloud-upload-alt fa-2x mb-2"></i>
+                                        <p class="mb-1">Click to upload thumbnail</p>
+                                        <small class="text-muted">JPG, PNG, GIF (Max 5MB)</small>
+                                        <input type="file" id="videoThumbnail" name="videoThumbnail" accept="image/*" class="d-none">
+                                    </div>
+                                    <div id="thumbnailPreview" class="mt-2" style="display: none;">
+                                        <img id="thumbnailImage" class="thumbnail-preview">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Video Source -->
+                    <div class="upload-section">
+                        <h4><i class="fas fa-link me-2"></i>Video Source</h4>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="videoSource" id="videoFile" value="file" checked>
+                                <label class="form-check-label" for="videoFile">
+                                    <i class="fas fa-upload me-1"></i>Upload Video File
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="videoSource" id="videoLink" value="link">
+                                <label class="form-check-label" for="videoLink">
+                                    <i class="fas fa-link me-1"></i>Video Link (YouTube, Vimeo, etc.)
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- File Upload Section -->
+                        <div id="fileUploadSection">
+                            <div class="file-upload-area" id="videoUploadArea">
+                                <i class="fas fa-cloud-upload-alt fa-2x mb-2"></i>
+                                <p class="mb-1">Click to upload video or drag and drop</p>
+                                <small class="text-muted">MP4, AVI, MOV, WMV (Max 500MB)</small>
+                                <input type="file" id="videoFile" name="videoFile" accept="video/*" class="d-none">
+                            </div>
+                            <div id="videoPreview" class="mt-2" style="display: none;">
+                                <video id="videoPlayer" controls style="max-width: 100%; max-height: 300px;">
+                                    Your browser does not support the video tag.
+                                </video>
+                            </div>
+                        </div>
+                        
+                        <!-- Link Input Section -->
+                        <div id="linkInputSection" style="display: none;">
+                            <div class="mb-3">
+                                <label for="video_url" class="form-label">Video URL</label>
+                                <input type="url" class="form-control" id="video_url" name="video_url" placeholder="https://www.youtube.com/watch?v=...">
+                                <div class="form-text">Supported: YouTube, Vimeo, Dailymotion, and direct video links</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Playlist Management -->
+                    <div class="upload-section">
+                        <h4><i class="fas fa-list me-2"></i>Playlist Management</h4>
+                        
+                        <div class="mb-3">
+                            <label for="playlistType" class="form-label">Content Type</label>
+                            <select class="form-select" id="playlistType" name="playlistType">
+                                <option value="single">Single Video</option>
+                                <option value="playlist">Playlist</option>
+                                <option value="sub_playlist">Sub-Playlist (Part of existing playlist)</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Playlist Details -->
+                        <div id="playlistDetails" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="playlistName" class="form-label">Playlist Name</label>
+                                        <input type="text" class="form-control" id="playlistName" name="playlistName">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="playlistDescription" class="form-label">Playlist Description</label>
+                                        <textarea class="form-control" id="playlistDescription" name="playlistDescription" rows="2"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="playlistOrder" class="form-label">Order in Playlist</label>
+                                <input type="number" class="form-control" id="playlistOrder" name="playlistOrder" min="1" value="1">
+                            </div>
+                        </div>
+                        
+                        <!-- Sub-Playlist Details -->
+                        <div id="subPlaylistDetails" style="display: none;">
+                            <div class="mb-3">
+                                <label for="parentPlaylist" class="form-label">Parent Playlist</label>
+                                <select class="form-select" id="parentPlaylist" name="parentPlaylist">
+                                    <option value="">Select parent playlist</option>
+                                    <option value="1">Python Programming Course</option>
+                                    <option value="2">Web Development Series</option>
+                                    <option value="3">Data Science Fundamentals</option>
+                                </select>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="subPlaylistName" class="form-label">Sub-Playlist Name</label>
+                                        <input type="text" class="form-control" id="subPlaylistName" name="subPlaylistName">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="subPlaylistOrder" class="form-label">Order in Sub-Playlist</label>
+                                        <input type="number" class="form-control" id="subPlaylistOrder" name="subPlaylistOrder" min="1" value="1">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Settings -->
+                    <div class="upload-section">
+                        <h4><i class="fas fa-cog me-2"></i>Advanced Settings</h4>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="videoDuration" class="form-label">Duration (minutes)</label>
+                                    <input type="number" class="form-control" id="videoDuration" name="videoDuration" min="1">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="videoTags" class="form-label">Tags</label>
+                                    <input type="text" class="form-control" id="videoTags" name="videoTags" placeholder="Enter tags separated by commas">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="videoPrivacy" class="form-label">Privacy</label>
+                                    <select class="form-select" id="videoPrivacy" name="videoPrivacy">
+                                        <option value="public">Public</option>
+                                        <option value="unlisted">Unlisted</option>
+                                        <option value="private">Private</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="videoStatus" class="form-label">Status</label>
+                                    <select class="form-select" id="videoStatus" name="videoStatus">
+                                        <option value="active">Active</option>
+                                        <option value="draft">Draft</option>
+                                        <option value="archived">Archived</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="allowComments" name="allowComments" checked>
+                                <label class="form-check-label" for="allowComments">
+                                    Allow comments
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="allowDownloads" name="allowDownloads">
+                                <label class="form-check-label" for="allowDownloads">
+                                    Allow downloads
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Upload Progress -->
+                    <div id="uploadProgress" class="upload-section" style="display: none;">
+                        <h4><i class="fas fa-upload me-2"></i>Upload Progress</h4>
+                        
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span id="progressText">Preparing upload...</span>
+                                <span id="progressPercentage">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-secondary" id="saveDraft">
+                            <i class="fas fa-save me-1"></i>Save Draft
+                        </button>
+                        <div>
+                            <button type="button" class="btn btn-outline-secondary me-2" id="previewVideo">
+                                <i class="fas fa-eye me-1"></i>Preview
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="uploadVideo">
+                                <i class="fas fa-upload me-1"></i>Upload Video
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // File upload functionality
+            const thumbnailArea = document.getElementById('thumbnailUploadArea');
+            const videoArea = document.getElementById('videoUploadArea');
+            const thumbnailInput = document.getElementById('videoThumbnail');
+            const videoInput = document.getElementById('videoFile');
+            
+            // Thumbnail upload
+            thumbnailArea.addEventListener('click', () => thumbnailInput.click());
+            thumbnailInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        document.getElementById('thumbnailImage').src = e.target.result;
+                        document.getElementById('thumbnailPreview').style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            // Video upload
+            videoArea.addEventListener('click', () => videoInput.click());
+            videoInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const url = URL.createObjectURL(file);
+                    document.getElementById('videoPlayer').src = url;
+                    document.getElementById('videoPreview').style.display = 'block';
+                }
+            });
+            
+            // Video source toggle
+            document.querySelectorAll('input[name="videoSource"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const fileSection = document.getElementById('fileUploadSection');
+                    const linkSection = document.getElementById('linkInputSection');
+                    
+                    if (this.value === 'file') {
+                        fileSection.style.display = 'block';
+                        linkSection.style.display = 'none';
+                    } else {
+                        fileSection.style.display = 'none';
+                        linkSection.style.display = 'block';
+                    }
+                });
+            });
+            
+            // Playlist type toggle
+            document.getElementById('playlistType').addEventListener('change', function() {
+                const playlistDetails = document.getElementById('playlistDetails');
+                const subPlaylistDetails = document.getElementById('subPlaylistDetails');
+                
+                playlistDetails.style.display = 'none';
+                subPlaylistDetails.style.display = 'none';
+                
+                if (this.value === 'playlist') {
+                    playlistDetails.style.display = 'block';
+                } else if (this.value === 'sub_playlist') {
+                    subPlaylistDetails.style.display = 'block';
+                }
+            });
+            
+            // Drag and drop functionality
+            [thumbnailArea, videoArea].forEach(area => {
+                area.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    this.classList.add('drag-over');
+                });
+                
+                area.addEventListener('dragleave', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('drag-over');
+                });
+                
+                area.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('drag-over');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        const input = this.querySelector('input[type="file"]');
+                        input.files = files;
+                        input.dispatchEvent(new Event('change'));
+                    }
+                });
+            });
+            
+            // Form submission
+            document.getElementById('videoUploadForm').addEventListener('submit', function(e) {
+                // Validate required fields
+                const courseId = document.getElementById('course_id').value;
+                const title = document.getElementById('title').value;
+                const videoSource = document.querySelector('input[name="videoSource"]:checked').value;
+                
+                if (!courseId) {
+                    alert('Please select a course');
+                    e.preventDefault();
+                    return;
+                }
+                
+                if (!title) {
+                    alert('Please enter a video title');
+                    e.preventDefault();
+                    return;
+                }
+                
+                if (videoSource === 'link') {
+                    const videoUrl = document.getElementById('video_url').value;
+                    if (!videoUrl) {
+                        alert('Please enter a video URL');
+                        e.preventDefault();
+                        return;
+                    }
+                } else {
+                    const videoFile = document.getElementById('videoFile').files[0];
+                    if (!videoFile) {
+                        alert('Please select a video file');
+                        e.preventDefault();
+                        return;
+                    }
+                }
+                
+                // Show progress
+                document.getElementById('uploadProgress').style.display = 'block';
+                
+                // Submit the form
+                this.submit();
+            });
+            
+            // Save draft
+            document.getElementById('saveDraft').addEventListener('click', function() {
+                alert('Draft saved successfully!');
+            });
+            
+            // Preview video
+            document.getElementById('previewVideo').addEventListener('click', function() {
+                alert('Preview functionality will be implemented here!');
+            });
+        });
+    </script>
+</body>
+</html> 

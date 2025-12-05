@@ -1,0 +1,524 @@
+{% extends "base.html" %}
+
+{% block title %}Certification Exam{% endblock %}
+
+{% block content %}
+<div class="container py-5" data-course-id="{{ course_id }}">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h1 class="card-title mb-0">Certification Exam</h1>
+                    <div class="exam-timer">
+                        <span id="timer" class="badge bg-warning text-dark">Time: <span id="timeRemaining">--:--</span></span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="exam-progress mb-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Progress</span>
+                            <span id="progressText">0/10</span>
+                        </div>
+                        <div class="progress">
+                            <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div id="examContainer">
+                        <form id="examForm">
+                            {% for question in exam_questions %}
+                            <div class="question-card mb-4 p-3 border rounded" data-question-id="{{ question.id }}">
+                                <h5 class="mb-3">
+                                    <span class="badge bg-secondary me-2">{{ loop.index }}</span>
+                                    {{ question.question_text }}
+                                </h5>
+                                <div class="options">
+                                    {% for option in ['option_a', 'option_b', 'option_c', 'option_d'] %}
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="radio" 
+                                               name="question_{{ question.id }}" 
+                                               id="question_{{ question.id }}_{{ option }}" 
+                                               value="{{ question[option] }}">
+                                        <label class="form-check-label" for="question_{{ question.id }}_{{ option }}">
+                                            {{ question[option] }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </form>
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <button id="submitExam" class="btn btn-success">
+                                <i class="fas fa-paper-plane me-2"></i>Submit Exam
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Results container (hidden by default) -->
+                    <div id="resultsContainer" class="d-none">
+                        <!-- Results will be shown here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.exam-timer {
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.question-card {
+    background-color: rgba(0, 0, 0, 0.03);
+    transition: all 0.3s ease;
+}
+
+.question-card:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.options .form-check-input:checked + .form-check-label {
+    font-weight: bold;
+    color: #0d6efd;
+}
+
+.result-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+}
+
+.result-pass {
+    color: #28a745;
+}
+
+.result-fail {
+    color: #dc3545;
+}
+
+.info-item {
+    margin-bottom: 15px;
+}
+
+.info-item strong {
+    display: block;
+    color: #6c757d;
+}
+
+.info-item span {
+    font-size: 1.1rem;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Global variables
+let courseId = {{ course_id | tojson }};
+let examQuestions = {{ exam_questions | tojson }};
+let examStartTime = new Date();
+let saveInProgress = false;
+let lastSaveTimestamp = 0;
+let tabSwitchDetected = false;
+let fullscreenExitDetected = false;
+
+// Initialize exam
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Certification exam loaded');
+    startTimer();
+    setupEventListeners();
+    updateProgress();
+    
+    // Set up visibility change detection for tab switching
+    document.addEventListener('visibilitychange', handleTabSwitchEvent);
+    
+    // Set up fullscreen change detection
+    document.addEventListener('fullscreenchange', handleFullscreenExit);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenExit);
+    document.addEventListener('mozfullscreenchange', handleFullscreenExit);
+    document.addEventListener('MSFullscreenChange', handleFullscreenExit);
+});
+
+// Start exam timer
+function startTimer() {
+    const timerElement = document.getElementById('timeRemaining');
+    const examDuration = 30 * 60; // 30 minutes in seconds
+    
+    // Update timer every second
+    setInterval(() => {
+        const now = new Date();
+        const elapsedSeconds = Math.floor((now - examStartTime) / 1000);
+        const remainingSeconds = Math.max(0, examDuration - elapsedSeconds);
+        
+        const minutes = Math.floor(remainingSeconds / 60);
+        const seconds = remainingSeconds % 60;
+        
+        timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        // If time is up, auto-submit
+        if (remainingSeconds <= 0) {
+            submitExam();
+        }
+    }, 1000);
+}
+
+// Set up event listeners
+function setupEventListeners() {
+    // Listen for option selections
+    document.querySelectorAll('input[type="radio"]').forEach(radio => {
+        radio.addEventListener('change', updateProgress);
+    });
+    
+    // Submit exam button
+    document.getElementById('submitExam').addEventListener('click', submitExam);
+}
+
+// Update progress bar and text
+function updateProgress() {
+    const totalQuestions = examQuestions.length;
+    const answeredQuestions = document.querySelectorAll('input[type="radio"]:checked').length;
+    
+    document.getElementById('progressText').textContent = `${answeredQuestions}/${totalQuestions}`;
+    
+    const progressPercent = totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0;
+    document.getElementById('progressBar').style.width = `${progressPercent}%`;
+}
+
+// Handle tab switching event
+function handleTabSwitchEvent() {
+    if (document.hidden && !tabSwitchDetected) {
+        console.log('Tab switch detected');
+        tabSwitchDetected = true;
+        savePartialExamProgress();
+    }
+}
+
+// Handle fullscreen exit event
+function handleFullscreenExit() {
+    const isFullscreen = document.fullscreenElement || 
+                        document.webkitFullscreenElement || 
+                        document.mozFullScreenElement || 
+                        document.msFullscreenElement;
+    
+    if (!isFullscreen && !fullscreenExitDetected) {
+        console.log('Fullscreen exit detected');
+        fullscreenExitDetected = true;
+        endExamForFullscreenExit();
+    }
+}
+
+// Save partial exam progress when tab switching or fullscreen exit occurs
+function savePartialExamProgress() {
+    console.log('savePartialExamProgress called');
+    console.log('Current courseId value:', courseId);
+    
+    // Validate course ID
+    if (!courseId || courseId <= 0) {
+        console.error('Course ID is required');
+        // Try to extract courseId from the data attribute as a fallback
+        const container = document.querySelector('div.container[data-course-id]');
+        if (container) {
+            const courseIdAttr = container.getAttribute('data-course-id');
+            console.log('Fallback courseId attribute:', courseIdAttr);
+            if (courseIdAttr && courseIdAttr !== 'None') {
+                const fallbackCourseId = parseInt(courseIdAttr);
+                console.log('Fallback courseId parsed:', fallbackCourseId);
+                if (fallbackCourseId && fallbackCourseId > 0) {
+                    // Show result inline instead of redirecting
+                    showResult({
+                        success: false,
+                        message: 'Tab switching detected',
+                        attempt_id: 0,
+                        status: 'failed_due_to_tab_switch'
+                    });
+                    return;
+                }
+            }
+        }
+        // If all else fails, show error inline
+        showResult({
+            success: false,
+            message: 'Course ID is required',
+            attempt_id: 0,
+            status: 'error'
+        });
+        return;
+    }
+    
+    // Prevent multiple submissions with a time buffer
+    const now = Date.now();
+    if (saveInProgress || (now - lastSaveTimestamp) < 2000) { // 2 second cooldown
+        console.log('saveInProgress is true or cooldown active, returning early');
+        return;
+    }
+    
+    saveInProgress = true;
+    lastSaveTimestamp = now;
+    console.log('Setting saveInProgress to true');
+    
+    // Calculate current score based on answered questions
+    let correctCount = 0;
+    let totalAnswered = 0;
+    
+    // Collect answers that have been selected so far
+    const answers = {};
+    
+    // Check if examQuestions is available
+    if (examQuestions && examQuestions.length > 0) {
+        examQuestions.forEach(question => {
+            const selectedOption = document.querySelector(`input[name="question_${question.id}"]:checked`);
+            if (selectedOption) {
+                answers[question.id] = selectedOption.value;
+                totalAnswered++;
+            }
+        });
+    } else {
+        console.log('DEBUG: examQuestions not available or empty');
+    }
+    
+    console.log('DEBUG: Collected answers:', answers);
+    console.log('Total answered questions:', totalAnswered);
+    
+    // Calculate time taken
+    let timeTaken = 0;
+    if (examStartTime) {
+        timeTaken = Math.floor((new Date() - examStartTime) / 1000);
+        console.log('DEBUG: Calculated time taken:', timeTaken, 'seconds');
+    } else {
+        console.log('DEBUG: examStartTime is not set');
+    }
+    
+    // Send partial progress to server (backend will calculate actual score)
+    console.log('Sending fetch request to /exam/save_partial');
+    console.log('DEBUG: Sending data to backend:', {
+        course_id: courseId,
+        answers: answers,
+        status: "failed_due_to_tab_switch",
+        timestamp: new Date().toISOString(),
+        time_taken: timeTaken
+    });
+    fetch('/exam/save_partial', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            course_id: courseId,
+            answers: answers, // Send actual answers for accurate scoring
+            status: "failed_due_to_tab_switch",
+            timestamp: new Date().toISOString(),
+            time_taken: timeTaken
+        })
+    })
+    .then(response => {
+        console.log('Fetch response received:', response);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Received response from /exam/save_partial:', data);
+        // Show result inline instead of redirecting
+        showResult(data);
+    })
+    .catch(error => {
+        console.error('Error saving partial exam progress:', error);
+        // Show error result inline
+        showResult({
+            success: false,
+            message: 'Error saving exam progress',
+            attempt_id: 0,
+            status: 'error'
+        });
+    })
+    .finally(() => {
+        // Reset the flag when done
+        console.log('Resetting saveInProgress to false');
+        saveInProgress = false;
+    });
+}
+
+// End exam when fullscreen is exited
+function endExamForFullscreenExit() {
+    console.log('endExamForFullscreenExit called');
+    savePartialExamProgress();
+}
+
+// Submit exam
+function submitExam() {
+    console.log('submitExam called');
+    
+    // Collect all answers
+    const answers = {};
+    examQuestions.forEach(question => {
+        const selectedOption = document.querySelector(`input[name="question_${question.id}"]:checked`);
+        if (selectedOption) {
+            answers[question.id] = selectedOption.value;
+        }
+    });
+    
+    // Calculate time taken
+    const timeTaken = Math.floor((new Date() - examStartTime) / 1000);
+    
+    // Send answers to server
+    fetch('/exam/submit', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            course_id: courseId,
+            answers: answers,
+            time_taken: timeTaken
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        showResult(data);
+    })
+    .catch(error => {
+        console.error('Error submitting exam:', error);
+        showResult({
+            success: false,
+            message: 'Error submitting exam',
+            attempt_id: 0,
+            status: 'error'
+        });
+    });
+}
+
+// Show exam results inline
+function showResult(data) {
+    console.log('showResult called with data:', data);
+    
+    // Hide exam container and show results container
+    document.getElementById('examContainer').classList.add('d-none');
+    const resultsContainer = document.getElementById('resultsContainer');
+    resultsContainer.classList.remove('d-none');
+    
+    // Create result content based on data
+    let resultHTML = '';
+    
+    if (data && data.success) {
+        // Successful result
+        const passed = data.status === 'passed';
+        const statusText = passed ? 'Congratulations! You Passed!' : 'Exam Not Passed';
+        const statusClass = passed ? 'text-success' : 'text-danger';
+        const iconClass = passed ? 'fa-certificate text-success' : 'fa-times-circle text-danger';
+        
+        resultHTML = `
+            <div class="text-center mb-4">
+                <div class="result-icon">
+                    <i class="fas ${iconClass}"></i>
+                </div>
+                <h2 class="${statusClass}">${statusText}</h2>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="info-item">
+                        <strong>Your Score:</strong>
+                        <span class="fs-4 fw-bold">${data.score !== undefined ? data.score + '%' : 'N/A'}</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="info-item">
+                        <strong>Status:</strong>
+                        <span class="badge ${passed ? 'bg-success' : 'bg-danger'}">
+                            ${passed ? 'Passed' : 'Failed'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="info-item">
+                        <strong>Time Taken:</strong>
+                        <span>${data.time_taken !== undefined ? data.time_taken + ' seconds' : 'N/A'}</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="info-item">
+                        <strong>Date:</strong>
+                        <span>${new Date().toLocaleString()}</span>
+                    </div>
+                </div>
+            </div>
+            
+            ${passed ? 
+                `<div class="alert alert-success">
+                    <i class="fas fa-certificate me-2"></i>
+                    <strong>Congratulations!</strong> You have successfully passed the exam.
+                </div>` : 
+                `<div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <strong>Exam Not Passed!</strong> You need to score at least 60% to pass.
+                </div>`
+            }
+            
+            <div class="d-flex justify-content-between mt-4">
+                ${data.can_retry ? 
+                    `<a href="/exam/${courseId}" class="btn btn-primary">
+                        <i class="fas fa-redo me-2"></i>Retry Exam
+                    </a>` : ''
+                }
+                <a href="/course/${courseId}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Course
+                </a>
+            </div>
+        `;
+    } else {
+        // Error or tab switch result
+        let message = 'An error occurred';
+        let alertClass = 'alert-danger';
+        let iconClass = 'fa-exclamation-triangle';
+        
+        if (data && data.status === 'failed_due_to_tab_switch') {
+            message = 'Exam Failed Due to Tab Switching';
+            alertClass = 'alert-warning';
+            iconClass = 'fa-exclamation-triangle';
+        } else if (data && data.message) {
+            message = data.message;
+        }
+        
+        resultHTML = `
+            <div class="text-center mb-4">
+                <div class="result-icon">
+                    <i class="fas ${iconClass} text-danger"></i>
+                </div>
+                <h2 class="text-danger">${message}</h2>
+            </div>
+            
+            ${data && data.status === 'failed_due_to_tab_switch' ? 
+                `<div class="alert ${alertClass}">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Tab Switching Detected!</strong> 
+                    Your exam was automatically failed due to switching tabs during the exam.
+                    <br><strong>Tab switching is restricted during the exam.</strong>
+                </div>` : 
+                `<div class="alert ${alertClass}">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Error!</strong> ${message}
+                </div>`
+            }
+            
+            <div class="d-flex justify-content-between mt-4">
+                <a href="/course/${courseId}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Course
+                </a>
+            </div>
+        `;
+    }
+    
+    resultsContainer.innerHTML = resultHTML;
+}
+</script>
+{% endblock %}

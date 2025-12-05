@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}{{ course.title }} - EduFlow LMS{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <!-- Left Section: Course Details -->
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h1 class="card-title mb-0">{{ course.title }}</h1>
+                </div>
+                <div class="card-body">
+                    <!-- Meta Info -->
+                    <div class="course-meta mb-4">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-user text-primary me-2"></i>
+                                    <strong>Instructor:</strong>&nbsp;{{ course.instructor }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-clock text-primary me-2"></i>
+                                    <strong>Duration:</strong>&nbsp;{{ course.duration }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="course-description mb-4">
+                        <h3 class="fw-bold mb-3">Course Description</h3>
+                        <p class="text-muted">{{ course.description }}</p>
+                    </div>
+
+                    <!-- Modules -->
+                    <div class="course-modules">
+                        <h3 class="fw-bold mb-3">Course Modules</h3>
+                        <div class="list-group">
+                            {% for module in modules %}
+                            <!-- All modules are now unlocked -->
+                            <div class="list-group-item list-group-item-action" 
+                                 {% if is_enrolled %}onclick="window.location.href='{{ url_for('module_video', course_id=course.id, module_id=module.id) }}';"{% endif %}
+                                 style="cursor: {% if is_enrolled %}pointer{% else %}not-allowed{% endif %};">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="d-flex align-items-center">
+                                        {% if module.is_completed %}
+                                        <i class="fas fa-check-circle text-success me-2"></i>
+                                        {% else %}
+                                        <i class="fas fa-play-circle text-primary me-2"></i>
+                                        {% endif %}
+                                        <h5 class="mb-0">{{ module.title }}</h5>
+                                    </div>
+                                    {% if module.is_completed %}
+                                    <span class="badge bg-success">✅ Completed</span>
+                                    {% else %}
+                                    <span class="badge bg-primary">Module {{ loop.index }}</span>
+                                    {% endif %}
+                                </div>
+                                <p class="text-muted mb-2">{{ module.description }}</p>
+                                {% if module.duration %}
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>{{ module.duration }}
+                                </small>
+                                {% endif %}
+                                {% if is_enrolled %}
+                                <div class="mt-2">
+                                    <small class="text-primary">
+                                        <i class="fas fa-external-link-alt me-1"></i>Click to watch
+                                    </small>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Section: Enrollment / Payment -->
+        <div class="col-lg-4">
+            <div class="card shadow sticky-top">
+                <div class="card-body">
+                    <!-- Price -->
+                    <div class="text-center mb-4">
+                        <h2 class="text-success mb-0">
+                            <i class="fas fa-dollar-sign"></i>{{ "%.2f"|format(course.price) }}
+                        </h2>
+                        <small class="text-muted">One-time payment</small>
+                    </div>
+
+                    <!-- Features -->
+                    <ul class="list-unstyled mb-4">
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Lifetime access</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i>{{ course.modules|length }} modules</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Video lessons & resources</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Certificate of completion</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i>24/7 student support</li>
+                    </ul>
+
+                    <!-- CTA Buttons -->
+                    <div class="d-grid gap-2">
+                        {% if session.user_id %}
+                            {% if enrollment %}
+                                <!-- User is enrolled -->
+                                {% if enrollment.completed_at %}
+                                    <!-- Course is completed, check if certification is required -->
+                                    {% set exam_required = course.id in exam_required_courses if exam_required_courses else False %}
+                                    {% if exam_required %}
+                                        <!-- Check if user has passed the exam -->
+                                        {% set exam_passed = course.id in exam_passed_courses if exam_passed_courses else False %}
+                                        {% if exam_passed %}
+                                            <!-- Exam passed, show both certificate download buttons -->
+                                            <a href="{{ url_for('download_certificate', course_id=course.id, type='course') }}" class="btn btn-success btn-lg">
+                                                <i class="fas fa-certificate me-2"></i>Download Course Certificate
+                                            </a>
+                                            <a href="{{ url_for('download_certificate', course_id=course.id, type='exam') }}" class="btn btn-info btn-lg">
+                                                <i class="fas fa-graduation-cap me-2"></i>Download Exam Certificate
+                                            </a>
+                                        {% else %}
+                                            <!-- Exam required but not passed, show certification exam button -->
+                                            <a href="{{ url_for('certification_exam', course_id=course.id) }}" class="btn btn-warning btn-lg">
+                                                <i class="fas fa-graduation-cap me-2"></i>Certification Exam
+                                            </a>
+                                            <small class="text-muted text-center d-block mt-2">
+                                                Pass the exam to earn your certificate
+                                            </small>
+                                            <!-- Show course certificate download button -->
+                                            <a href="{{ url_for('download_certificate', course_id=course.id, type='course') }}" class="btn btn-success btn-lg mt-2">
+                                                <i class="fas fa-certificate me-2"></i>Download Course Certificate
+                                            </a>
+                                        {% endif %}
+                                    {% else %}
+                                        <!-- No exam required, show certificate download -->
+                                        <a href="{{ url_for('download_certificate', course_id=course.id, type='course') }}" class="btn btn-success btn-lg">
+                                            <i class="fas fa-certificate me-2"></i>Download Certificate
+                                        </a>
+                                    {% endif %}
+                                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary btn-lg">
+                                        <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                                    </a>
+                                {% else %}
+                                    <!-- Course in progress -->
+                                    <a href="{{ url_for('dashboard', course_id=course.id) }}" class="btn btn-success btn-lg">
+                                        <i class="fas fa-play me-2"></i>Continue Learning
+                                    </a>
+                                {% endif %}
+                            {% else %}
+                                <!-- User is logged in but not enrolled -->
+                                <form method="GET" action="{{ url_for('checkout', course_id=course.id) }}">
+                                    <input type="hidden" name="course_id" value="{{ course.id }}">
+                                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                                        <i class="fas fa-shopping-cart me-2"></i>Enroll Now
+                                    </button>
+                                </form>
+                            {% endif %}
+                        {% else %}
+                            <!-- User not logged in -->
+                            <a href="{{ url_for('signup') }}" class="btn btn-primary btn-lg">
+                                <i class="fas fa-user-plus me-2"></i>Sign Up to Enroll
+                            </a>
+                            <small class="text-muted text-center d-block mt-2">
+                                Already have an account? <a href="{{ url_for('login') }}">Login</a>
+                            </small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

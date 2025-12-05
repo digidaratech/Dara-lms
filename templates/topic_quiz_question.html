@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Module Quiz - {{ module.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h1 class="card-title mb-0">
+                        <i class="fas fa-question-circle me-2"></i>Module Quiz
+                    </h1>
+                    <p class="mb-0 mt-2">{{ module.title }}</p>
+                </div>
+                <div class="card-body">
+                    <div class="quiz-progress mb-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Question {{ question_index }} of {{ total_questions }}</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" id="progressBar"></div>
+                        </div>
+                    </div>
+
+                    <form id="quizForm" method="POST" action="{% if question_index < total_questions %}{{ url_for('module_quiz_question', module_id=module.id, question_index=question_index + 1) }}{% else %}{{ url_for('submit_module_quiz', module_id=module.id) }}{% endif %}">
+                        <!-- Hidden field to store previous answers -->
+                        {% if question_index > 1 %}
+                            {% for key, value in request.form.items() %}
+                                <input type="hidden" name="{{ key }}" value="{{ value }}">
+                            {% endfor %}
+                        {% endif %}
+                        
+                        <!-- Current question -->
+                        <div class="question-card mb-4 p-3 border rounded">
+                            <h5 class="mb-3">
+                                <span class="badge bg-secondary me-2">Q{{ question_index }}</span>
+                                {{ question.question_text }}
+                            </h5>
+                            
+                            <div class="options">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio" name="question_{{ question.id }}" 
+                                           id="option_{{ question.id }}_A" value="A" required>
+                                    <label class="form-check-label" for="option_{{ question.id }}_A">
+                                        A. {{ question.option_a }}
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio" name="question_{{ question.id }}" 
+                                           id="option_{{ question.id }}_B" value="B" required>
+                                    <label class="form-check-label" for="option_{{ question.id }}_B">
+                                        B. {{ question.option_b }}
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio" name="question_{{ question.id }}" 
+                                           id="option_{{ question.id }}_C" value="C" required>
+                                    <label class="form-check-label" for="option_{{ question.id }}_C">
+                                        C. {{ question.option_c }}
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio" name="question_{{ question.id }}" 
+                                           id="option_{{ question.id }}_D" value="D" required>
+                                    <label class="form-check-label" for="option_{{ question.id }}_D">
+                                        D. {{ question.option_d }}
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            {% if question_index > 1 %}
+                                <a href="{{ url_for('module_quiz_question', module_id=module.id, question_index=question_index - 1) }}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-1"></i>Previous
+                                </a>
+                            {% else %}
+                                <button type="button" class="btn btn-secondary" onclick="history.back()">
+                                    <i class="fas fa-arrow-left me-1"></i>Back
+                                </button>
+                            {% endif %}
+                            
+                            <button type="submit" class="btn btn-success">
+                                {% if question_index < total_questions %}
+                                    Next Question <i class="fas fa-arrow-right ms-1"></i>
+                                {% else %}
+                                    <i class="fas fa-paper-plane me-1"></i>Submit Quiz
+                                {% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set progress information
+    const questionIndex = parseInt("{{ question_index }}");
+    const totalQuestions = parseInt("{{ total_questions }}");
+    const progressPercent = Math.round((questionIndex / totalQuestions) * 100);
+    
+    // Update progress bar
+    document.getElementById('progressBar').style.width = progressPercent + '%';
+    
+    // Focus on the first option when the page loads
+    const firstOption = document.querySelector('input[type="radio"]');
+    if (firstOption) {
+        firstOption.focus();
+    }
+    
+    // Add keyboard navigation (1-4 for options A-D)
+    document.addEventListener('keydown', function(e) {
+        const key = e.key;
+        const questionId = "{{ question.id }}";
+        
+        switch(key) {
+            case '1':
+                document.getElementById('option_' + questionId + '_A').checked = true;
+                break;
+            case '2':
+                document.getElementById('option_' + questionId + '_B').checked = true;
+                break;
+            case '3':
+                document.getElementById('option_' + questionId + '_C').checked = true;
+                break;
+            case '4':
+                document.getElementById('option_' + questionId + '_D').checked = true;
+                break;
+        }
+    });
+});
+</script>
+{% endblock %}

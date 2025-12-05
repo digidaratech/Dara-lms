@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Checkout - {{ course.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <!-- Left Column: Course Details -->
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h2 class="card-title mb-0">
+                        <i class="fas fa-book me-2"></i> {{ course.title }}
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">{{ course.description }}</p>
+
+                    <ul class="list-unstyled mb-4">
+                        <li><strong>Instructor:</strong> {{ course.instructor }}</li>
+                        <li><strong>Duration:</strong> {{ course.duration }}</li>
+                        <li><strong>Price:</strong>
+                            <span class="h5 text-success">${{ "%.2f"|format(course.price) }}</span>
+                        </li>
+                    </ul>
+
+                    <form method="POST">
+                        <input type="hidden" name="course_id" value="{{ course.id }}">
+                        <input type="hidden" name="payment_method" value="credit_card">
+                        <input type="hidden" name="payment_details" value="simulated_payment">
+                        <button type="submit" class="btn btn-lg btn-primary">
+                            <i class="fas fa-credit-card me-2"></i>Pay & Enroll Now
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Payment Info -->
+        <div class="col-lg-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-shield-alt me-2"></i>Secure Payment
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Payment Simulation</strong><br>
+                        This is a demo environment. No actual payment will be processed.
+                    </div>
+
+                    <h6 class="fw-bold mb-3">What’s Included:</h6>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-check text-success me-2"></i> Access to full course content</li>
+                        <li><i class="fas fa-check text-success me-2"></i> Certificate of completion</li>
+                        <li><i class="fas fa-check text-success me-2"></i> Lifetime access</li>
+                        <li><i class="fas fa-check text-success me-2"></i> Support and updates</li>
+                    </ul>
+
+                    <small class="text-muted d-block mt-4">
+                        <i class="fas fa-lock me-1"></i> Secured with 256-bit SSL encryption
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

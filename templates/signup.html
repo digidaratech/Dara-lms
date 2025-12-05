@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up - EduFlow LMS{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <h2 class="fw-bold">Create Account</h2>
+                        <p class="text-muted">Join EduFlow LMS and start learning today</p>
+                    </div>
+
+                    <!-- Google Sign Up Button -->
+                    <div class="mb-4">
+                        <button type="button" class="google-btn mb-3" id="googleSignUpBtn">
+                            <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" width="18" height="18">
+                            Continue with Google
+                        </button>
+                        <div class="oauth-divider">
+                            <span>or</span>
+                        </div>
+                    </div>
+
+                    <!-- ✅ Bootstrap Validation: class="needs-validation" -->
+                    <form id="signupForm" method="POST" action="/signup" class="needs-validation" novalidate>
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Full Name *</label>
+                            <input type="text" class="form-control" id="name" name="name" required autocomplete="name">
+                            <div class="invalid-feedback">Please enter your full name.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email *</label>
+                            <input type="email" class="form-control" id="email" name="email" required autocomplete="email">
+                            <div class="invalid-feedback">Enter a valid email address.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="mobile" class="form-label">Mobile Number *</label>
+                            <input type="tel" class="form-control" id="mobile" name="mobile" required autocomplete="tel">
+                            <div class="invalid-feedback">Please enter your mobile number.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password *</label>
+                            <input type="password" class="form-control" id="password" name="password" required minlength="6" autocomplete="new-password">
+                            <div class="invalid-feedback">Password must be at least 6 characters.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Confirm Password *</label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                            <div class="invalid-feedback">Passwords must match.</div>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="terms" required>
+                            <label class="form-check-label text-white" for="terms">
+                                I agree to the 
+                                <a href="#" class="text-decoration-none text-primary fw-semibold">Terms of Service</a> 
+                                and 
+                                <a href="#" class="text-decoration-none text-primary fw-semibold">Privacy Policy</a>
+                            </label>
+                            <div class="invalid-feedback">
+                                You must accept the terms and conditions.
+                            </div>
+                            </div>
+
+
+                        <button type="submit" id="submitBtn" class="btn btn-primary w-100">
+                            <span id="btnSpinner" class="spinner-border spinner-border-sm me-2 d-none"></span>
+                            <span id="btnText">Create Account</span>
+                        </button>
+
+                        <div id="debugMessage" class="alert alert-info d-none mt-3"></div>
+                    </form>
+
+
+                    <div class="text-center mt-4">
+                        <p class="text-muted">
+                            Already have an account?
+                            <a href="{{ url_for('login') }}" class="text-decoration-none">Login here</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Bootstrap Bundle (required for tooltip, modal, etc.) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Google OAuth Script -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<script>
+  document.getElementById('signupForm').addEventListener('submit', function () {
+    console.log("✅ Form submitted to backend");
+  });
+
+// Google OAuth Configuration for Sign Up
+function handleCredentialResponse(response) {
+    console.log('Google OAuth response received:', response);
+    
+    // Send the ID token to your server for sign up
+    fetch('/google-signup', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            credential: response.credential
+        })
+    })
+    .then(response => {
+        console.log('Server response status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Server response data:', data);
+        if (data.success) {
+            console.log('Signup successful, redirecting to dashboard...');
+            window.location.href = '/dashboard';
+        } else {
+            console.error('Signup failed:', data.message);
+            alert('Sign up failed: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Network or parsing error:', error);
+        alert('An error occurred during sign up. Please check the console for details.');
+    });
+}
+
+// Initialize Google Sign-In for Sign Up
+window.onload = function () {
+    google.accounts.id.initialize({
+        client_id: '246800125218-l9rd09o1altsvlrknu1b4a67fdl9kkc9.apps.googleusercontent.com', // Replace with your actual Google Client ID
+        callback: handleCredentialResponse
+    });
+    
+    google.accounts.id.renderButton(
+        document.getElementById('googleSignUpBtn'), {
+            theme: 'outline',
+            size: 'large',
+            width: '100%',
+            text: 'signup_with'
+        }
+    );
+};
+</script>
+{% endblock %}

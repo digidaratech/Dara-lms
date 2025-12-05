@@ -1,0 +1,349 @@
+{% extends "admin/base.html" %}
+
+{% block title %}View Course - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ course.title }}</h1>
+        <div>
+            <a href="{{ url_for('admin_edit_course', course_id=course.id) }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-edit fa-sm text-white-50 me-2"></i>Edit Course
+            </a>
+            <a href="{{ url_for('admin_courses') }}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left fa-sm text-white-50 me-2"></i>Back to Courses
+            </a>
+        </div>
+    </div>
+
+    <!-- Course Information -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Course Details</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Title:</strong> {{ course.title }}</p>
+                            <p><strong>Instructor:</strong> {{ course.instructor }}</p>
+                            <p><strong>Duration:</strong> {{ course.duration }}</p>
+                            <p><strong>Price:</strong> ${{ "%.2f"|format(course.price) }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Category:</strong> {{ course.category|title }}</p>
+                            <p><strong>Level:</strong> {{ course.level|title }}</p>
+                            <p><strong>Status:</strong> 
+                                {% if course.status == 'active' %}
+                                    <span class="badge bg-success">Active</span>
+                                {% elif course.status == 'draft' %}
+                                    <span class="badge bg-warning">Draft</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Archived</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>Created:</strong> {{ course.created_at.strftime('%Y-%m-%d') if course.created_at else 'N/A' }}</p>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h6><strong>Description:</strong></h6>
+                    <p>{{ course.description }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Course Statistics</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-right">
+                                <h4 class="text-primary">{{ stats.total_enrollments or 0 }}</h4>
+                                <p class="text-muted">Enrollments</p>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-success">{{ "%.1f"|format(stats.avg_progress or 0) }}%</h4>
+                            <p class="text-muted">Avg Progress</p>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <a href="{{ url_for('admin_video_upload') }}" class="btn btn-success btn-block mb-2">
+                        <i class="fas fa-upload fa-sm text-white-50 me-2"></i>Add Video
+                    </a>
+                    <a href="#" class="btn btn-warning btn-block mb-2" data-bs-toggle="modal" data-bs-target="#uploadDocumentModal">
+                        <i class="fas fa-file-upload fa-sm text-white-50 me-2"></i>Upload Document
+                    </a>
+
+                    <a href="{{ url_for('admin_enrollments') }}" class="btn btn-info btn-block">
+                        <i class="fas fa-users fa-sm text-white-50 me-2"></i>View Enrollments
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- Upload Document Modal -->
+<div class="modal fade" id="uploadDocumentModal" tabindex="-1" aria-labelledby="uploadDocumentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="uploadDocumentForm" enctype="multipart/form-data" method="POST" action="{{ url_for('admin_upload_document') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="uploadDocumentModalLabel">Upload Course Document</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" name="course_id" value="{{ course.id }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">Select Document File</label>
+                        <input type="file" class="form-control" name="document_file"
+                               accept=".pdf,.txt,.docx,.pptx" required>
+                        <small class="text-muted">Supported: PDF, TXT, DOCX, PPTX</small>
+                    </div>
+
+                    <div id="uploadStatus" style="display:none;" class="text-info fw-bold mt-2">
+                        Uploading & rebuilding AI index...
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-upload me-2"></i>Upload & Rebuild AI
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+    <!-- Course Modules -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Course Modules ({{ modules|length }})</h6>
+                    <a href="{{ url_for('admin_video_upload') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus fa-sm text-white-50 me-2"></i>Add Module
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if modules %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>Order</th>
+                                        <th>Title</th>
+                                        <th>Description</th>
+                                        <th>Duration</th>
+                                        <th>Video URL</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for module in modules %}
+                                    <tr>
+                                        <td>{{ module.order_index }}</td>
+                                        <td>{{ module.title }}</td>
+                                        <td>{{ module.description[:100] }}{% if module.description|length > 100 %}...{% endif %}</td>
+                                        <td>{{ module.duration }}</td>
+                                        <td>
+                                            {% if module.video_url %}
+                                                <a href="{{ module.video_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-play"></i> Watch
+                                                </a>
+                                            {% else %}
+                                                <span class="text-muted">No video</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="#" class="btn btn-outline-primary edit-module" data-module-id="{{ module.id }}" data-bs-toggle="modal" data-bs-target="#editModuleModal">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </a>
+                                                <button class="btn btn-outline-danger delete-module" data-module-id="{{ module.id }}">
+                                                    <i class="fas fa-trash"></i> Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-video fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No modules yet</h5>
+                            <p class="text-muted">Add your first video module to get started.</p>
+                            <a href="{{ url_for('admin_video_upload') }}" class="btn btn-primary">
+                                <i class="fas fa-plus fa-sm text-white-50 me-2"></i>Add First Module
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Module Modal -->
+<div class="modal fade" id="editModuleModal" tabindex="-1" aria-labelledby="editModuleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModuleModalLabel">Edit Module</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editModuleForm">
+                    <input type="hidden" id="edit_module_id" name="module_id">
+                    <div class="mb-3">
+                        <label for="edit_title" class="form-label">Title</label>
+                        <input type="text" class="form-control" id="edit_title" name="title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_description" class="form-label">Description</label>
+                        <textarea class="form-control" id="edit_description" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_duration" class="form-label">Duration</label>
+                                <input type="text" class="form-control" id="edit_duration" name="duration" placeholder="e.g., 15:30">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_order_index" class="form-label">Order Index</label>
+                                <input type="number" class="form-control" id="edit_order_index" name="order_index" min="0">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_video_url" class="form-label">Video URL</label>
+                        <input type="url" class="form-control" id="edit_video_url" name="video_url">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveModuleChanges">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Delete module function
+document.addEventListener('DOMContentLoaded', function() {
+    // Delete module button click handler
+    document.querySelectorAll('.delete-module').forEach(button => {
+        button.addEventListener('click', function() {
+            const moduleId = this.getAttribute('data-module-id');
+            if (confirm('Are you sure you want to delete this module? This action cannot be undone.')) {
+                // Send DELETE request to remove the module
+                fetch(`/admin/module/${moduleId}/delete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Reload the page to show updated modules list
+                        location.reload();
+                    } else {
+                        alert('Error deleting module: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while deleting the module');
+                });
+            }
+        });
+    });
+
+    // Edit module button click handler
+    document.querySelectorAll('.edit-module').forEach(button => {
+        button.addEventListener('click', function() {
+            const moduleId = this.getAttribute('data-module-id');
+            // Find the row for this module
+            const row = this.closest('tr');
+            const title = row.cells[1].textContent;
+            const description = row.cells[2].textContent;
+            const duration = row.cells[3].textContent;
+            const orderIndex = row.cells[0].textContent;
+            
+            // Extract video URL if it exists
+            let videoUrl = '';
+            const videoCell = row.cells[4];
+            const videoLink = videoCell.querySelector('a');
+            if (videoLink) {
+                videoUrl = videoLink.getAttribute('href');
+            }
+            
+            // Populate the modal with current values
+            document.getElementById('edit_module_id').value = moduleId;
+            document.getElementById('edit_title').value = title;
+            document.getElementById('edit_description').value = description;
+            document.getElementById('edit_duration').value = duration;
+            document.getElementById('edit_order_index').value = orderIndex;
+            document.getElementById('edit_video_url').value = videoUrl;
+        });
+    });
+
+    // Save module changes
+    document.getElementById('saveModuleChanges').addEventListener('click', function() {
+        const moduleId = document.getElementById('edit_module_id').value;
+        const formData = new FormData(document.getElementById('editModuleForm'));
+        
+        // Send PUT request to update the module
+        fetch(`/admin/module/${moduleId}/edit`, {
+            method: 'POST',
+            body: JSON.stringify({
+                title: formData.get('title'),
+                description: formData.get('description'),
+                duration: formData.get('duration'),
+                order_index: formData.get('order_index'),
+                video_url: formData.get('video_url')
+            }),
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close the modal and reload the page
+                bootstrap.Modal.getInstance(document.getElementById('editModuleModal')).hide();
+                location.reload();
+            } else {
+                alert('Error updating module: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while updating the module');
+        });
+    });
+});
+</script>
+{% endblock %}
