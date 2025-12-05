@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 import hashlib
 import secrets
 import re
-from werkzeug.security import generate_password_hash, check_password_hash
 
 # Remove the standalone MySQL connection - we'll use Flask's MySQL connection
 # mysql = MySQLdb.connect(
@@ -14,7 +13,111 @@ from werkzeug.security import generate_password_hash, check_password_hash
 #     charset='utf8mb4'
 # )
 
+
 # USER FUNCTIONS
+
+
+# Helper: robust duration parser used across progress calculations
+def parse_duration_to_seconds(duration_str):
+    """Parse a duration string into integer seconds.
+
+    Supports:
+    - plain seconds as integer or float: '3994' or '3994.2'
+    - colon-delimited forms: 'MM:SS', 'H:MM:SS', 'HH:MM:SS', right-to-left parsing
+    - human-readable forms: '1h 6m 34s', '1h6m34s', '90m', '30s'
+    Returns an int number of seconds (rounded to nearest second) or 0 on failure.
+    """
+    if duration_str is None:
+        return 0
+
+    s = str(duration_str).strip()
+    if s == '':
+        return 0
+
+    # Plain numeric seconds (allow floats)
+    if re.fullmatch(r"\d+(?:\.\d+)?", s):
+        try:
+            num_value = float(s)
+            # Handle edge case where duration might be stored as milliseconds
+            if num_value > 36000:  # If greater than 10 hours in seconds, likely milliseconds
+                return int(round(num_value / 1000))
+            return int(round(num_value))
+        except Exception:
+            return 0
+
+    # Colon-separated format (right-to-left parsing)
+    if ':' in s:
+        try:
+            parts = [p.strip() for p in s.split(':') if p.strip() != '']
+            seconds = 0.0
+            multiplier = 1.0
+            for i in range(len(parts) - 1, -1, -1):
+                part = parts[i]
+                # allow float only in the least-significant (seconds) part
+                if i == len(parts) - 1:
+                    val = float(part)
+                else:
+                    val = float(part) if part else 0.0
+                seconds += val * multiplier
+                multiplier *= 60.0
+            return int(round(seconds))
+        except Exception:
+            # Fall through to other parsing methods
+            pass
+
+    # Human-readable forms like '1h 6m 34s' or '90m', '30s'
+    try:
+        h = m = sec = 0.0
+        # Accept patterns like '1h', '6m', '34s' (optionally with spaces)
+        hr = re.search(r"(\d+(?:\.\d+)?)\s*h", s, flags=re.I)
+        mn = re.search(r"(\d+(?:\.\d+)?)\s*m(?!s)", s, flags=re.I)
+        sc = re.search(r"(\d+(?:\.\d+)?)\s*s", s, flags=re.I)
+        if hr:
+            h = float(hr.group(1))
+        if mn:
+            m = float(mn.group(1))
+        if sc:
+            sec = float(sc.group(1))
+        if hr or mn or sc:
+            total = h * 3600.0 + m * 60.0 + sec
+            return int(round(total))
+    except Exception:
+        pass
+
+    # Handle common duration formats like "2 minutes 41 seconds"
+    if 'minute' in s.lower() or 'second' in s.lower():
+        try:
+            total_seconds = 0
+            # Extract hours
+            hours_match = re.search(r"(\d+)\s*hour", s, re.IGNORECASE)
+            if hours_match:
+                total_seconds += int(hours_match.group(1)) * 3600
+            # Extract minutes
+            minutes_match = re.search(r"(\d+)\s*minute", s, re.IGNORECASE)
+            if minutes_match:
+                total_seconds += int(minutes_match.group(1)) * 60
+            # Extract seconds
+            seconds_match = re.search(r"(\d+)\s*second", s, re.IGNORECASE)
+            if seconds_match:
+                total_seconds += int(seconds_match.group(1))
+            return total_seconds
+        except Exception:
+            pass
+    
+    # Last-resort: try to parse any leading number as seconds
+    m = re.search(r"(\d+(?:\.\d+)?)", s)
+    if m:
+        try:
+            num_value = float(m.group(1))
+            # Handle edge case where duration might be stored as milliseconds
+            if num_value > 36000:  # If greater than 10 hours in seconds, likely milliseconds
+                return int(round(num_value / 1000))
+            return int(round(num_value))
+        except Exception:
+            return 0
+
+    return 0
+
 
 def get_connection(mysql):
     """Helper function to get connection from either MySQLWrapper or direct connection."""
@@ -33,7 +136,7 @@ def create_user(name, email, mobile, password, mysql):
     """Create a new user account."""
     try:
         # Hash the password
-        password_hash = generate_password_hash(password)
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
         
         connection = get_connection(mysql)
         if not connection:
@@ -61,13 +164,10 @@ def login_user(email, password, mysql):
             return None
             
         cur = connection.cursor(dictionary=True)
-        cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+        cur.execute("SELECT * FROM users WHERE email = %s AND password_hash = %s", (email, password_hash))
         user = cur.fetchone()
         cur.close()
-        
-        if user and check_password_hash(user['password_hash'], password):
-            return user
-        return None
+        return user
     except Exception as e:
         print("[login_user] ERROR:", e)
         return None
@@ -106,7 +206,9 @@ def get_user_by_id(user_id, mysql):
         print(f"[get_user_by_id] ERROR: {e}")
         return None
 
+# =========================
 # COURSE FUNCTIONS
+# =========================
 
 def get_all_courses(mysql):
     """Get all available courses."""
@@ -275,7 +377,9 @@ def get_modules_by_course(course_id, mysql):
         print("[get_modules_by_course] ERROR:", e)
         return []
 
+# =========================
 # ENROLLMENT FUNCTIONS
+# =========================
 
 def is_user_enrolled(user_id, course_id, mysql):
     try:
@@ -374,7 +478,9 @@ def get_courses_by_user(user_id, mysql):
         print(f"[get_courses_by_user] ERROR: {e}")
         return []
 
+# =========================
 # PROGRESS TRACKING FUNCTIONS
+# =========================
 
 def get_user_course_progress(user_id, course_id, mysql):
     """Get detailed progress for a user in a specific course."""
@@ -406,7 +512,7 @@ def get_user_course_progress(user_id, course_id, mysql):
         print(f"[get_user_course_progress] ERROR: {e}")
         return []
 
-def update_module_progress(user_id, course_id, module_id, watched_duration, mysql, is_completed=False):
+def update_module_progress(user_id, course_id, module_id, watched_duration, mysql, is_completed=False, provided_total_duration=None, client_provider=None):
     """Update user's progress for a specific module."""
     connection = None
     cur = None
@@ -420,8 +526,8 @@ def update_module_progress(user_id, course_id, module_id, watched_duration, mysq
         print("[update_module_progress] Database connection established")
         cur = connection.cursor()
         
-        # Get module total duration
-        cur.execute("SELECT duration FROM course_modules WHERE id = %s", (module_id,))
+        # Get module total duration and video URL (to detect provider like YouTube)
+        cur.execute("SELECT duration, video_url FROM course_modules WHERE id = %s", (module_id,))
         module = cur.fetchone()
         if not module:
             print(f"[update_module_progress] ERROR: Module {module_id} not found")
@@ -429,42 +535,82 @@ def update_module_progress(user_id, course_id, module_id, watched_duration, mysq
                 cur.close()
             return False
         
-        # Convert duration string to seconds (format: MM:SS or seconds)
+        # Convert duration string to seconds using shared parser
         duration_str = module[0]
-        total_seconds = 0
-        if duration_str:
-            try:
-                # Handle different duration formats
-                if ':' in duration_str:
-                    # Format: MM:SS
-                    parts = duration_str.split(':')
-                    if len(parts) == 2:
-                        total_seconds = int(parts[0]) * 60 + int(parts[1])
-                elif duration_str.isdigit():
-                    # Format: seconds as string
-                    total_seconds = int(duration_str)
-                else:
-                    # Try to convert to float as fallback
-                    total_seconds = int(float(duration_str))
-            except (ValueError, TypeError):
-                total_seconds = 0  # Don't use default if parsing fails
-        
-        print(f"[update_module_progress] Module duration: {duration_str} ({total_seconds} seconds)")
+        # video_url may be available depending on cursor type (tuple or dict)
+        video_url = None
+        try:
+            if isinstance(module, dict):
+                video_url = module.get('video_url')
+            else:
+                # tuple/list: duration at index 0, video_url at index 1
+                video_url = module[1] if len(module) > 1 else None
+        except Exception:
+            video_url = None
+        total_seconds = parse_duration_to_seconds(duration_str)
+        print(f"[update_module_progress] Module duration raw: {duration_str!r} -> parsed: {total_seconds} seconds")
+
+        # If the client provided a total_duration (player-reported), prefer it when valid
+        try:
+            if provided_total_duration is not None:
+                client_total = int(round(float(provided_total_duration)))
+                if client_total > 0:
+                    # For local videos, always use the client-provided duration
+                    # For YouTube videos, prefer client's duration if it's larger than metadata or metadata is missing
+                    is_youtube_module = False
+                    try:
+                        if client_provider and str(client_provider).lower() == 'youtube':
+                            is_youtube_module = True
+                        elif video_url and isinstance(video_url, str) and ('youtube.com' in video_url or 'youtu.be' in video_url):
+                            is_youtube_module = True
+                    except Exception:
+                        is_youtube_module = False
+                    
+                    if not is_youtube_module or client_total > total_seconds or total_seconds == 0:
+                        print(f"[update_module_progress] Using client-reported total_duration: {client_total}s (replacing {total_seconds}s)")
+                        total_seconds = client_total
+        except Exception as e:
+            print(f"[update_module_progress] WARNING: invalid provided_total_duration '{provided_total_duration}': {e}")
         
         # Auto-complete logic: If watched 100% of video, mark as completed
         # Only mark as completed when watched duration is equal to or greater than total duration
         if total_seconds > 0 and not is_completed:
-            # Check if watched duration is at least equal to total duration (with small tolerance for floating point)
-            if watched_duration >= total_seconds:
-                is_completed = True
-                print(f"[update_module_progress] ✅ AUTO-COMPLETE: Watched {watched_duration}s (≥{total_seconds}s) - marking as completed")
-            # Additional check to prevent premature completion
-            elif watched_duration > 0 and total_seconds > 0:
-                watch_percentage = watched_duration / total_seconds
-                if watch_percentage >= 0.995:  # 99.5% threshold to account for floating point precision
+            # Allow a more generous tolerance (0.5s) when comparing watched time to total duration
+            tolerance = 0.5
+
+            # Detect if this module is a YouTube iframe (based on DB video_url) or client-reported provider
+            is_youtube_module = False
+            try:
+                if client_provider and str(client_provider).lower() == 'youtube':
+                    is_youtube_module = True
+                elif video_url and isinstance(video_url, str) and ('youtube.com' in video_url or 'youtu.be' in video_url):
+                    is_youtube_module = True
+            except Exception:
+                is_youtube_module = False
+
+            # If it's a YouTube module and the client hasn't provided a player-reported duration,
+            # avoid auto-completing here — the frontend will provide total_duration once the player is ready.
+            if is_youtube_module and provided_total_duration is None:
+                print(f"[update_module_progress] INFO: YouTube module detected (provider={client_provider}) and no client total_duration provided; skipping auto-complete checks to avoid premature completion")
+            else:
+                # For accurate completion, watched duration must be >= total duration
+                # Use a more generous tolerance to account for floating point precision issues
+                if float(watched_duration) >= float(total_seconds) - 0.5:
                     is_completed = True
-                    print(f"[update_module_progress] ✅ AUTO-COMPLETE: Watched {watched_duration}s ({watch_percentage*100:.2f}% of {total_seconds}s) - marking as completed")
+                    print(f"[update_module_progress] ✅ AUTO-COMPLETE: Watched {watched_duration}s (≥{total_seconds-0.5}s) - marking as completed")
+                else:
+                    # Additional percentage-based check to avoid premature completion due to rounding
+                    try:
+                        watch_percentage = float(watched_duration) / float(total_seconds)
+                    except Exception:
+                        watch_percentage = 0.0
+                    # Only mark as completed when 99.5%+ watched (with more generous tolerance)
+                    if watch_percentage >= 0.995:  # 99.5% or more (accounting for floating point errors)
+                        is_completed = True
+                        print(f"[update_module_progress] ✅ AUTO-COMPLETE: Watched {watched_duration}s ({watch_percentage*100:.2f}% of {total_seconds}s) - marking as completed")
         
+        print(f"[update_module_progress] Final completion status: is_completed={is_completed}, watched_duration={watched_duration}, total_seconds={total_seconds}")
+
         # Insert or update progress
         print(f"[update_module_progress] Inserting/updating progress record (is_completed={is_completed})")
         cur.execute("""
@@ -526,38 +672,71 @@ def calculate_course_progress(user_id, course_id, mysql):
         print("[calculate_course_progress] Database connection established")
         cur = connection.cursor()
         
-        # Optimize: Get total and completed modules in a single query
-        cur.execute("""
-            SELECT 
-                (SELECT COUNT(*) FROM course_modules WHERE course_id = %s) as total_modules,
-                COALESCE(SUM(CASE 
-                    WHEN ump.is_completed = TRUE THEN 100.0
-                    WHEN ump.watched_duration > 0 AND ump.total_duration > 0 THEN (ump.watched_duration / ump.total_duration) * 100.0
-                    ELSE 0 
-                END), 0) as completed_modules,
-                GROUP_CONCAT(CONCAT('watched:', COALESCE(ump.watched_duration, 0), ', total:', COALESCE(ump.total_duration, 0)) SEPARATOR '; ') as debug_info
-            FROM course_modules cm
-            LEFT JOIN user_module_progress ump ON cm.id = ump.module_id AND ump.user_id = %s
-            WHERE cm.course_id = %s
-        """, (course_id, user_id, course_id))
-        result = cur.fetchone()
+        # Get total number of modules in the course
+        cur.execute("SELECT COUNT(*) FROM course_modules WHERE course_id = %s", (course_id,))
+        total_modules_result = cur.fetchone()
+        total_modules = total_modules_result[0] if total_modules_result and total_modules_result[0] is not None else 0
         
-        total_modules = result[0] if result and result[0] is not None else 0
-        completed_modules = result[1] if result and len(result) > 1 and result[1] is not None else 0
-        debug_info = result[2] if result and len(result) > 2 and result[2] is not None else ""
-        
-        print(f"[calculate_course_progress] Total modules: {total_modules}, Completed: {completed_modules}")
-        print(f"[calculate_course_progress] Debug info: {debug_info}")
+        print(f"[calculate_course_progress] Total modules: {total_modules}")
         if total_modules == 0:
             print("[calculate_course_progress] No modules found for course")
             cur.close()
             return 0
         
-        # Calculate progress percentage based on actual module progress
-        # The SQL query calculates the SUM of progress percentages for all modules
-        # So we need to divide by total_modules to get the average progress percentage
-        progress_percentage = completed_modules / total_modules if total_modules > 0 else 0
-        print(f"[calculate_course_progress] Progress percentage: {progress_percentage}%")
+        # Get all modules with their progress data
+        cur.execute("""
+            SELECT cm.id AS module_id,
+                   COALESCE(ump.is_completed, FALSE) AS is_completed,
+                   COALESCE(ump.watched_duration, 0) AS watched_duration,
+                   COALESCE(ump.total_duration, 0) AS total_duration
+            FROM course_modules cm
+            LEFT JOIN user_module_progress ump ON cm.id = ump.module_id AND ump.user_id = %s
+            WHERE cm.course_id = %s
+            ORDER BY cm.order_index
+        """, (user_id, course_id))
+        module_rows = cur.fetchall()
+        
+        # Calculate course progress using locked module system
+        # lockedCompletedModulesWeight + (currentModuleProgress / 100 * moduleWeight)
+        completed_modules_count = 0
+        total_progress = 0.0
+        total_module_weight = 1.0 / total_modules if total_modules > 0 else 0
+        
+        # Process all modules to calculate cumulative progress
+        for mr in module_rows:
+            # Support both dict and tuple results
+            if hasattr(mr, 'get'):
+                is_completed = bool(mr.get('is_completed', False))
+                watched_duration = float(mr.get('watched_duration', 0))
+                total_duration = float(mr.get('total_duration', 0))
+            else:
+                # tuple: module_id, is_completed, watched_duration, total_duration
+                is_completed = bool(mr[1]) if len(mr) > 1 else False
+                watched_duration = float(mr[2]) if len(mr) > 2 else 0.0
+                total_duration = float(mr[3]) if len(mr) > 3 else 0.0
+            
+            if is_completed:
+                # Completed modules contribute 100% of their weight
+                completed_modules_count += 1
+                total_progress += total_module_weight * 100
+            else:
+                # Incomplete modules contribute their watched percentage
+                if total_duration > 0:
+                    module_progress = (watched_duration / total_duration) * 100
+                    total_progress += total_module_weight * module_progress
+                # Continue processing all modules, don't break
+        
+        # Total course progress (already in percentage form due to our calculation)
+        course_progress_percent = total_progress
+        
+        print(f"Course Progress Updated: {course_progress_percent:.2f}%")
+        print(f"Completed Modules: {completed_modules_count} modules")
+        print(f"Total Progress: {total_progress:.2f}%")
+        
+        # Ensure course progress doesn't exceed 100%
+        progress_percentage = round(max(0.0, min(100.0, course_progress_percent)), 2)
+        
+        print(f"[calculate_course_progress] Calculated course progress (dynamic): {progress_percentage}%")
         
         # Check if course was previously completed (combined with update query)
         cur.execute("SELECT completed_at FROM user_course WHERE user_id = %s AND course_id = %s", (user_id, course_id))
@@ -565,102 +744,161 @@ def calculate_course_progress(user_id, course_id, mysql):
         was_previously_completed = previous_result and previous_result[0] is not None
         print(f"[calculate_course_progress] Was previously completed: {was_previously_completed}")
         
-        # Update user_course table
-        print(f"[calculate_course_progress] Updating user_course table with progress: {progress_percentage}%")
-        cur.execute("""
-            UPDATE user_course 
-            SET progress = %s,
-                completed_at = CASE WHEN %s >= 100 AND completed_at IS NULL THEN NOW() ELSE completed_at END
-            WHERE user_id = %s AND course_id = %s
-        """, (progress_percentage, progress_percentage, user_id, course_id))
-        
-        connection.commit()
-        print("[calculate_course_progress] Progress committed to database")
-        
         # Check if course is now completed (100% progress)
         is_now_completed = progress_percentage >= 100
         print(f"[calculate_course_progress] Is now completed: {is_now_completed}")
         
-        # If course was just completed, check if exam is required and passed before generating certificate
+        # Update user_course table with completion status
+        # Only set completed_at if course is 100% AND last module quiz is completed (if applicable)
+        print(f"[calculate_course_progress] Updating user_course table with progress: {progress_percentage}%")
+        cur.execute("""
+            UPDATE user_course 
+            SET progress = %s
+            WHERE user_id = %s AND course_id = %s
+        """, (progress_percentage, user_id, course_id))
+        
+        connection.commit()
+        print("[calculate_course_progress] Progress committed to database")
+        
+        # If course was just completed, check if the last module's quiz is also completed before generating certificate
         if is_now_completed and not was_previously_completed:
-            print("[calculate_course_progress] Course just completed! Generating course completion certificate...")
+            print("[calculate_course_progress] Course just completed! Checking if last module quiz is completed before generating certificate...")
             
-            # Generate course completion certificate (exam not required for this)
-            print("[calculate_course_progress] Generating course completion certificate...")
-            try:
-                # Import certificate service
-                from services.certificate_service import generate_certificate, save_certificate_record
+            # Check if the last module has quiz questions and if the user has completed it
+            from services.topic_quiz_service import get_topic_questions_for_module, has_user_completed_topic_quiz
+            
+            # Get the last module in the course
+            cur.execute("""
+                SELECT id FROM course_modules 
+                WHERE course_id = %s 
+                ORDER BY order_index DESC 
+                LIMIT 1
+            """, (course_id,))
+            last_module_result = cur.fetchone()
+            
+            if last_module_result:
+                last_module_id = last_module_result[0] if isinstance(last_module_result, tuple) else last_module_result.get('id')
                 
-                # Optimize: Get user and course details in a single query
-                cur.execute("""
-                    SELECT u.name, u.email, u.mobile, c.title 
-                    FROM users u, courses c 
-                    WHERE u.id = %s AND c.id = %s
-                """, (user_id, course_id))
-                details_result = cur.fetchone()
+                # Check if the last module has quiz questions
+                last_module_questions = get_topic_questions_for_module(last_module_id, mysql)
+                has_quiz_questions = len(last_module_questions) > 0
                 
-                if details_result:
-                    user_name = details_result[0] if details_result[0] else "User"
-                    user_email = details_result[1] if details_result[1] else ""
-                    user_phone = details_result[2] if details_result[2] else None
-                    course_title = details_result[3] if details_result[3] else "Course"
+                print(f"[calculate_course_progress] Last module ID: {last_module_id}, Has quiz questions: {has_quiz_questions}")
+                
+                # If the last module has quiz questions, check if the user has completed it
+                if has_quiz_questions:
+                    quiz_completed = has_user_completed_topic_quiz(user_id, last_module_id, mysql)
+                    print(f"[calculate_course_progress] Last module quiz completed: {quiz_completed}")
                     
-                    print(f"[calculate_course_progress] Generating course certificate for {user_name} - {course_title}")
+                    # Only generate certificate if the last module quiz is completed
+                    if quiz_completed:
+                        print("[calculate_course_progress] Last module quiz completed! Generating course completion certificate...")
+                        # Update course completion status
+                        cur.execute("""
+                            UPDATE user_course 
+                            SET completed_at = NOW()
+                            WHERE user_id = %s AND course_id = %s AND completed_at IS NULL
+                        """, (user_id, course_id))
+                        connection.commit()
+                        print("[calculate_course_progress] Course completion status updated")
+                        # Generate course completion certificate
+                        print("[calculate_course_progress] Generating course completion certificate...")
+                    else:
+                        print("[calculate_course_progress] Last module quiz not completed yet. Deferring certificate generation.")
+                        # Don't generate certificate yet
+                        is_now_completed = False
+                else:
+                    print("[calculate_course_progress] Last module has no quiz questions. Generating course completion certificate...")
+                    # Update course completion status
+                    cur.execute("""
+                        UPDATE user_course 
+                        SET completed_at = NOW()
+                        WHERE user_id = %s AND course_id = %s AND completed_at IS NULL
+                    """, (user_id, course_id))
+                    connection.commit()
+                    print("[calculate_course_progress] Course completion status updated")
+                    # Generate course completion certificate (no quiz required)
+                    print("[calculate_course_progress] Generating course completion certificate...")
+            else:
+                print("[calculate_course_progress] No last module found. Generating course completion certificate...")
+                # Generate course completion certificate (fallback)
+                print("[calculate_course_progress] Generating course completion certificate...")
+            # Only generate certificate if course is actually completed (after all checks)
+            if is_now_completed:
+                try:
+                    # Import certificate service
+                    from services.certificate_service import generate_certificate, save_certificate_record
                     
-                    # Generate course completion certificate (with duplicate check built-in)
-                    certificate_id = save_certificate_record(user_id, course_id, "", mysql, 'course')
-                    if certificate_id:
-                        try:
-                            certificate_path = generate_certificate(user_name, course_title, datetime.now(), certificate_id, 'course')
-                            print(f"[calculate_course_progress] Course certificate generated: {certificate_path}")
-                            
-                            # Update certificate path in database
-                            cur.execute("""
-                                UPDATE certificates 
-                                SET certificate_path = %s 
-                                WHERE id = %s
-                            """, (certificate_path, certificate_id))
-                            connection.commit()
-                            
-                            # Send email with certificate
+                    # Optimize: Get user and course details in a single query
+                    cur.execute("""
+                        SELECT u.name, u.email, u.mobile, c.title 
+                        FROM users u, courses c 
+                        WHERE u.id = %s AND c.id = %s
+                    """, (user_id, course_id))
+                    details_result = cur.fetchone()
+                    
+                    if details_result:
+                        user_name = details_result[0] if details_result[0] else "User"
+                        user_email = details_result[1] if details_result[1] else ""
+                        user_phone = details_result[2] if details_result[2] else None
+                        course_title = details_result[3] if details_result[3] else "Course"
+                        
+                        print(f"[calculate_course_progress] Generating course certificate for {user_name} - {course_title}")
+                        
+                        # Generate course completion certificate (with duplicate check built-in)
+                        certificate_id = save_certificate_record(user_id, course_id, "", mysql, 'course')
+                        if certificate_id:
                             try:
-                                from services.email_service import send_certificate_email
-                                email_sent = send_certificate_email(user_name, user_email, course_title, certificate_path)
-                                if email_sent:
-                                    print(f"[calculate_course_progress] Course certificate email sent to {user_email}")
-                                else:
-                                    print(f"[calculate_course_progress] Failed to send course certificate email to {user_email}")
-                            except Exception as email_error:
-                                print(f"[calculate_course_progress] Course certificate email sending error: {email_error}")
-                                import traceback
-                                traceback.print_exc()
-                            
-                            # Send WhatsApp notification (if user has phone number)
-                            if user_phone:
+                                certificate_path = generate_certificate(user_name, course_title, datetime.now(), certificate_id, 'course')
+                                print(f"[calculate_course_progress] Course certificate generated: {certificate_path}")
+                                
+                                # Update certificate path in database
+                                cur.execute("""
+                                    UPDATE certificates 
+                                    SET certificate_path = %s 
+                                    WHERE id = %s
+                                """, (certificate_path, certificate_id))
+                                connection.commit()
+                                
+                                # Send email with certificate
                                 try:
-                                    from services.whatsapp_service import send_certificate_whatsapp
-                                    certificate_url = f"https://your-lms-domain.com/certificate/{course_id}/download?type=course"
-                                    whatsapp_sent = send_certificate_whatsapp(user_name, user_phone, course_title, certificate_url)
-                                    if whatsapp_sent:
-                                        print(f"[calculate_course_progress] WhatsApp notification sent to {user_phone}")
+                                    from services.email_service import send_certificate_email
+                                    email_sent = send_certificate_email(user_name, user_email, course_title, certificate_path)
+                                    if email_sent:
+                                        print(f"[calculate_course_progress] Course certificate email sent to {user_email}")
                                     else:
-                                        print(f"[calculate_course_progress] Failed to send WhatsApp notification to {user_phone}")
-                                except Exception as whatsapp_error:
-                                    print(f"[calculate_course_progress] WhatsApp sending error: {whatsapp_error}")
+                                        print(f"[calculate_course_progress] Failed to send course certificate email to {user_email}")
+                                except Exception as email_error:
+                                    print(f"[calculate_course_progress] Course certificate email sending error: {email_error}")
                                     import traceback
                                     traceback.print_exc()
-                            
-                            print(f"[calculate_course_progress] ✅ Course certificate generated and notifications sent to user {user_id} for course {course_id}")
-                        except Exception as cert_gen_error:
-                            print(f"[calculate_course_progress] Course certificate generation error: {cert_gen_error}")
-                            import traceback
-                            traceback.print_exc()
-                    else:
-                        print(f"[calculate_course_progress] Failed to save course certificate record for user {user_id} course {course_id}")
-            except Exception as cert_error:
-                print(f"[calculate_course_progress] Course certificate process error: {cert_error}")
-                import traceback
-                traceback.print_exc()
+                                
+                                # Send WhatsApp notification (if user has phone number)
+                                if user_phone:
+                                    try:
+                                        from services.whatsapp_service import send_certificate_whatsapp
+                                        certificate_url = f"https://your-lms-domain.com/certificate/{course_id}/download?type=course"
+                                        whatsapp_sent = send_certificate_whatsapp(user_name, user_phone, course_title, certificate_url)
+                                        if whatsapp_sent:
+                                            print(f"[calculate_course_progress] WhatsApp notification sent to {user_phone}")
+                                        else:
+                                            print(f"[calculate_course_progress] Failed to send WhatsApp notification to {user_phone}")
+                                    except Exception as whatsapp_error:
+                                        print(f"[calculate_course_progress] WhatsApp sending error: {whatsapp_error}")
+                                        import traceback
+                                        traceback.print_exc()
+                                
+                                print(f"[calculate_course_progress] ✅ Course certificate generated and notifications sent to user {user_id} for course {course_id}")
+                            except Exception as cert_gen_error:
+                                print(f"[calculate_course_progress] Course certificate generation error: {cert_gen_error}")
+                                import traceback
+                                traceback.print_exc()
+                        else:
+                            print(f"[calculate_course_progress] Failed to save course certificate record for user {user_id} course {course_id}")
+                except Exception as cert_error:
+                    print(f"[calculate_course_progress] Course certificate process error: {cert_error}")
+                    import traceback
+                    traceback.print_exc()
         else:
             if is_now_completed and was_previously_completed:
                 print("[calculate_course_progress] Course was already completed previously")
@@ -674,7 +912,9 @@ def calculate_course_progress(user_id, course_id, mysql):
         traceback.print_exc()
         return 0
 
+# =========================
 # WATCH TIME TRACKING FUNCTIONS
+# =========================
 
 def record_watch_time(user_id, course_id, module_id, watch_duration, mysql):
     """Record watch time for analytics."""
@@ -723,7 +963,9 @@ def get_user_watch_time(user_id, mysql, days=7):
         print(f"[get_user_watch_time] ERROR: {e}")
         return []
 
+# =========================
 # ANALYTICS FUNCTIONS
+# =========================
 
 def get_user_analytics(user_id, mysql):
     """Get comprehensive analytics for a user."""
@@ -958,7 +1200,9 @@ def get_course_analytics(course_id, mysql):
         print(f"[get_course_analytics] ERROR: {e}")
         return {}
 
+# =========================
 # UTILITY FUNCTIONS
+# =========================
 
 def format_duration(seconds):
     """Convert seconds to MM:SS format."""
